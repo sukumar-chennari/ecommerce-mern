@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { createCheckoutSession } from "../controllers/stripe.controller.ts";
-import { requireAuth } from "../middlewares/auth.middleware.ts";
+import { createCheckoutSession } from "../controllers/stripe.controller";
+import { requireAuth } from "../middlewares/auth.middleware";
 
 const router = Router();
 

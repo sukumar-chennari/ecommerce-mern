@@ -1,15 +1,20 @@
 import type { Request, Response } from "express";
 import mongoose from "mongoose";
-import Cart from "../models/Cart.model.ts";
-import Product from "../models/Product.model.ts";
-import Order from "../models/Order.model.ts";
+import Cart from "../models/Cart.model";
+import Product from "../models/Product.model";
+import Order from "../models/Order.model";
 import Stripe from "stripe";
 
 interface AuthRequest extends Request {
   userId?: string;
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-11-17.clover" });
+
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error("STRIPE_SECRET_KEY is missing in environment variables");
+}
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-12-15.clover" });
     
 /**
  * Create an order from the current user's cart.

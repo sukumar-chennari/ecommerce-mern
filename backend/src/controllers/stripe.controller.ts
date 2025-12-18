@@ -1,12 +1,12 @@
 import  type { Request, Response } from "express";
 import Stripe from "stripe";
-import Order from "../models/Order.model.ts";
+import Order from "../models/Order.model";
 import dotenv from "dotenv";
 
 dotenv.config();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: "2025-11-17.clover",
+  apiVersion: "2025-12-15.clover",
 });
 
 // Create Checkout session (frontend will redirect to session.url)

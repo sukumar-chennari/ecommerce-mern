@@ -48,7 +48,7 @@ productSchema.index({ slug: 1 }, { unique: true });
 productSchema.pre("save", async function (this: IProduct) {
   if (this.isModified("name")) {
     // You can safely use await here if slugify was async, otherwise just assign
-    this.slug = slugify.default(this.name, { lower: true });
+    this.slug = slugify(this.name, { lower: true });
   }
   // No next() call needed for async middleware
 });

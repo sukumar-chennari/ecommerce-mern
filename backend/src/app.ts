@@ -3,12 +3,13 @@ import  type { Application } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
-import authRoutes from "./routes/auth.routes.ts";
-import productRoutes from "./routes/product.routes.ts";
-import cartRoutes from "./routes/cart.routes.ts";
-import orderRoutes from "./routes/order.routes.ts";
-import stripeRoutes from "./routes/stripe.routes.ts"
-import { stripeWebhookHandler } from "./controllers/webhook.controller.ts";
+import authRoutes from "./routes/auth.routes";
+import productRoutes from "./routes/product.routes";
+import cartRoutes from "./routes/cart.routes";
+import orderRoutes from "./routes/order.routes";
+import stripeRoutes from "./routes/stripe.routes"
+import { stripeWebhookHandler } from "./controllers/webhook.controller";
+import { Request, Response } from "express";
 dotenv.config();
 
 const app: Application = express();
@@ -31,8 +32,12 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Health Check
-app.get("/health", (_, res) => {
-  res.send({ status: "OK" });
+// app.get("/health", (_, res) => {
+//   res.send({ status: "OK" });
+// });
+
+app.get("/health", (_req: Request, res: Response) => {
+  res.status(200).json({ status: "OK" });
 });
 
 app.use("/api/auth", authRoutes);

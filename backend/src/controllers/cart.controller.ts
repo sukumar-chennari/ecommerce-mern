@@ -1,7 +1,7 @@
 import  type { Request, Response } from "express";
 import mongoose from "mongoose";
-import Cart from "../models/Cart.model.ts";
-import Product from "../models/Product.model.ts";
+import Cart from "../models/Cart.model";
+import Product from "../models/Product.model";
 
 // typed request that includes userId from auth middleware
 interface AuthRequest extends Request {

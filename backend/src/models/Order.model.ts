@@ -48,6 +48,12 @@ export interface IOrder extends Document {
     deliveredAt?: Date;
   };
 
+  tracking?: {
+  carrier?: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
+};
+
   deliveryEstimate?: string;
 
   createdAt: Date;
@@ -75,7 +81,15 @@ const OrderSchema = new Schema<IOrder>(
     total: { type: Number, required: true },
     status: {
       type: String,
-      enum: ["pending", "paid", "cancelled", "failed", "refunded"],
+      enum: [
+  "pending",
+  "paid",
+  "shipped",
+  "delivered",
+  "cancelled",
+  "failed",
+  "refunded",
+],
       default: "pending",
     },
     shippingAddress: {
@@ -91,7 +105,11 @@ const OrderSchema = new Schema<IOrder>(
     shippedAt: { type: Date },
     payment: { type: Schema.Types.Mixed },
 
-
+    tracking: {
+  carrier: String,
+  trackingNumber: String,
+  trackingUrl: String,
+},
     statusTimeline: {
     orderedAt: { type: Date },
     paidAt: { type: Date },

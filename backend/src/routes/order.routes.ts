@@ -5,9 +5,10 @@ import {
   adminListOrders,
   getOrderById,
   getOrderByStripeSession,
-} from "../controllers/order.controller.ts";
-import { requireAuth } from "../middlewares/auth.middleware.ts";
-import { requireAdmin } from "../middlewares/role.middleware.ts";
+} from "../controllers/order.controller";
+import { requireAuth } from "../middlewares/auth.middleware";
+import { requireAdmin } from "../middlewares/role.middleware";
+import { updateOrderStatus } from "../controllers/adminOrder.controller";
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.get("/:id", requireAuth, getOrderById);
 router.get("/session/:sessionId", requireAuth, getOrderByStripeSession);
 // admin routes
 router.get("/admin/all", requireAuth, requireAdmin, adminListOrders);
+router.patch("/admin/orders/:orderId/status", requireAuth, requireAdmin,updateOrderStatus );
 
 export default router;

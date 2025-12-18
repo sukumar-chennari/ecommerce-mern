@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import User from "../models/User.model.ts";
+import User from "../models/User.model";
 
 export const requireAdmin = async (
   req: Request & { userId?: string },

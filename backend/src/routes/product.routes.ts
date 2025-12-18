@@ -6,10 +6,10 @@ import {
   getProductBySlug,
   updateProductById,
   
-} from "../controllers/product.controller.ts";
+} from "../controllers/product.controller";
 
-import { requireAuth } from "../middlewares/auth.middleware.ts";
-import { requireAdmin } from "../middlewares/role.middleware.ts";
+import { requireAuth } from "../middlewares/auth.middleware";
+import { requireAdmin } from "../middlewares/role.middleware";
 
 const router = Router();
 

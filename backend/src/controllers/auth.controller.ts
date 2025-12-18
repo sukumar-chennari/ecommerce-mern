@@ -1,7 +1,7 @@
 import  type { Request, Response } from "express";
-import User from "../models/User.model.ts";
-import { hashPassword, comparePassword } from "../services/auth.service.ts";
-import { generateAccessToken, generateRefreshToken } from "../utils/jwt.ts";
+import User from "../models/User.model";
+import { hashPassword, comparePassword } from "../services/auth.service";
+import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
 import jwt from "jsonwebtoken";
 export const register = async (req: Request, res: Response) => {
   try {
