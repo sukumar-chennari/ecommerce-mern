@@ -36,8 +36,9 @@ export const login = async (req: Request, res: Response) => {
     const match = await comparePassword(password, user.password);
     if (!match) return res.status(400).json({ message: "Invalid credentials" });
 
-    const accessToken = generateAccessToken(user._id.toString());
-    const refreshToken = generateRefreshToken(user._id.toString());
+    // Pass role to token generation
+    const accessToken = generateAccessToken(user._id.toString(), user.role);
+    const refreshToken = generateRefreshToken(user._id.toString(), user.role);
 
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
@@ -52,8 +53,6 @@ export const login = async (req: Request, res: Response) => {
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-
-
 
     return res.json({ message: "Logged in", user });
   } catch (err) {
@@ -76,9 +75,9 @@ export const refreshToken = (req: Request, res: Response) => {
     const token = req.cookies.refreshToken;
     if (!token) return res.status(401).json({ message: "No refresh token" });
 
-    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET as string) as { userId: string };
+      const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET as string) as { userId: string, role: "user" | "admin" };
 
-    const newAccessToken = generateAccessToken(decoded.userId);
+      const newAccessToken = generateAccessToken(decoded.userId, decoded.role);
 
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,

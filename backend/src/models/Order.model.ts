@@ -17,7 +17,7 @@ export interface IOrder extends Document {
   tax: number;
   total: number;
 
-  status: "pending" | "paid" | "cancelled" | "failed" | "refunded";
+  status: "pending" | "paid" | "cancelled" | "failed" | "refunded"| "shipped" | "delivered";
 
   shippingAddress?: {
     name?: string;
@@ -81,7 +81,7 @@ const OrderSchema = new Schema<IOrder>(
     total: { type: Number, required: true },
     status: {
       type: String,
-      enum: [
+enum: [
   "pending",
   "paid",
   "shipped",

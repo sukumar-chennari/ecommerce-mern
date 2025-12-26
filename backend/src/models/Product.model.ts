@@ -11,6 +11,9 @@ export interface IProduct extends Document {
   images: string[];
   slug: string;
   createdAt: Date;
+  averageRating?: number;
+reviewCount?: number;
+isActive?: boolean;
 }
 
 const productSchema = new Schema<IProduct>(
@@ -30,6 +33,11 @@ const productSchema = new Schema<IProduct>(
     images: { type: [String], default: [] },
 
     slug: { type: String, unique: true, },
+
+    averageRating: { type: Number, default: 0 },
+    
+    reviewCount: { type: Number, default: 0 },
+    isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

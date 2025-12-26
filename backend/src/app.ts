@@ -10,6 +10,10 @@ import orderRoutes from "./routes/order.routes";
 import stripeRoutes from "./routes/stripe.routes"
 import { stripeWebhookHandler } from "./controllers/webhook.controller";
 import { Request, Response } from "express";
+import reviewRoutes from "./routes/review.routes";
+import wishlistRoutes from "./routes/wishlist.routes";
+import adminProductRoutes from "./routes/admin.product.routes";
+import adminAnalyticsRoutes from "./routes/admin.analytics.routes";
 dotenv.config();
 
 const app: Application = express();
@@ -28,8 +32,11 @@ app.use(
   })
 );
 
-app.use(express.json());
+
 app.use(cookieParser());
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Health Check
 // app.get("/health", (_, res) => {
@@ -45,4 +52,10 @@ app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/stripe", stripeRoutes);
+app.use("/api/reviews", reviewRoutes  );
+app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/admin/products", adminProductRoutes);
+
+
+app.use("/api/admin/analytics", adminAnalyticsRoutes);
 export default app;

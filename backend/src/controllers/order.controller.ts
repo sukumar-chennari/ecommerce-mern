@@ -4,6 +4,7 @@ import Cart from "../models/Cart.model";
 import Product from "../models/Product.model";
 import Order from "../models/Order.model";
 import Stripe from "stripe";
+import Review from "../models/Review.model";
 
 interface AuthRequest extends Request {
   userId?: string;
@@ -174,6 +175,7 @@ export const adminListOrders = async (req: Request, res: Response) => {
 export const getOrderById = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid order ID" });
     }
@@ -181,32 +183,50 @@ export const getOrderById = async (req: AuthRequest, res: Response) => {
     const order = await Order.findById(id).lean();
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    // authorization
     const userId = req.userId;
     const isAdmin = (req as any).isAdmin;
+
     if (!isAdmin && order.userId.toString() !== userId) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    // prepare response with progress data
     const progress = {
       ordered: !!order.statusTimeline?.orderedAt,
       paid: !!order.statusTimeline?.paidAt,
       shipped: !!order.statusTimeline?.shippedAt,
-      delivered: !!order.statusTimeline?.deliveredAt
+      delivered: !!order.statusTimeline?.deliveredAt,
     };
+
+    let reviewEligibility: Record<string, boolean> = {};
+
+    if (order.status == "delivered" && userId) {
+      const reviews = await Review.find({
+        userId,
+        productId: { $in: order.items.map(i => i.productId) },
+      }).lean();
+
+      const reviewedProductIds = new Set(
+        reviews.map(r => r.productId.toString())
+      );
+
+      for (const item of order.items) {
+        reviewEligibility[item.productId.toString()] =
+          !reviewedProductIds.has(item.productId.toString());
+      }
+    }
 
     return res.json({
       order,
       progress,
       estimatedDelivery: order.deliveryEstimate,
+      reviewEligibility,
     });
-
   } catch (err) {
     console.error("getOrderById error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
+
 // export const getOrderById = async (req: AuthRequest, res: Response) => {
 //   try {
 //     const id = req.params.id;
@@ -257,3 +277,4 @@ export const getOrderByStripeSession = async (req: AuthRequest, res: Response) =
     return res.status(500).json({ message: "Server error" });
   }
 };
+

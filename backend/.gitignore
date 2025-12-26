@@ -1,3 +1,5 @@
+# Ignore npm lock file
+package-lock.json
 node_modules/
 dist/
 .env
