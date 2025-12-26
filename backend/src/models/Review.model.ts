@@ -32,5 +32,7 @@ const ReviewSchema = new Schema<IReview>(
  * Enforce one review per user per product
  */
 ReviewSchema.index({ userId: 1, productId: 1 }, { unique: true });
+// For review aggregation & lookup
+ReviewSchema.index({ productId: 1 });
 
 export default mongoose.model<IReview>("Review", ReviewSchema);

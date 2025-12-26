@@ -122,6 +122,13 @@ enum: [
 );
 
 OrderSchema.index({ userId: 1 });
-OrderSchema.index({ status: 1, createdAt: -1 });
+// For revenue & order analytics
+OrderSchema.index({ status: 1, createdAt: 1 });
+
+// For order history (user side)
+OrderSchema.index({ userId: 1, createdAt: -1 });
+
+// For product analytics (items.productId used in unwind)
+OrderSchema.index({ "items.productId": 1 });
 
 export default mongoose.model<IOrder>("Order", OrderSchema);

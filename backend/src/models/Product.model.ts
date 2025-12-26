@@ -51,6 +51,12 @@ productSchema.index({ brand: 1 });
 productSchema.index({ price: 1 });
 productSchema.index({ slug: 1 }, { unique: true });
 
+
+// For product listing & admin filters
+productSchema.index({ isActive: 1, category: 1 });
+
+// For stock alerts
+productSchema.index({ stock: 1 });
 // --- FIXED VERSION ---
 // Add "async" here and remove the 'next' parameter/call
 productSchema.pre("save", async function (this: IProduct) {
