@@ -7,6 +7,29 @@ const allowedTransitions: Record<string, string[]> = {
   shipped: ["delivered"],
 };
 
+// List all orders
+export const adminListOrders = async (req: Request, res: Response) => {
+  const orders = await Order.find()
+    .sort({ createdAt: -1 })
+    .lean();
+
+  res.json({ orders });
+};
+
+// Get order by ID
+export const adminGetOrderById = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const order = await Order.findById(id).lean();
+  if (!order) {
+    return res.status(404).json({ message: "Order not found" });
+  }
+
+  res.json({ order });
+};
+
+
+
 export const updateOrderStatus = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
@@ -26,10 +49,10 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     const currentStatus = order.status;
 
     if (!allowedTransitions[currentStatus]?.includes(status)) {
-        console.log("Invalid status transition attempted:", {
-            from: currentStatus,
-            to: status,
-            });
+      console.log("Invalid status transition attempted:", {
+        from: currentStatus,
+        to: status,
+      });
 
       return res.status(400).json({
         message: `Cannot change order status from ${currentStatus} to ${status}`,

@@ -16,7 +16,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
 }
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-12-15.clover" });
-    
+
 /**
  * Create an order from the current user's cart.
  * - Validates stock for each item
@@ -175,6 +175,8 @@ export const adminListOrders = async (req: Request, res: Response) => {
 export const getOrderById = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+
+    console.log(' get by order id', id);
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid order ID" });

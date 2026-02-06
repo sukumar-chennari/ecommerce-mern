@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import Review from "../models/Review.model";
 import Order from "../models/Order.model";
 import Product from "../models/Product.model";
+import { recalculateProductRating } from "../utils/review.util";
 
 interface AuthRequest extends Request {
   userId?: string;
@@ -41,6 +42,9 @@ export const createReview = async (req: AuthRequest, res: Response) => {
       comment,
     });
 
+    //     await recalculateProductRating(
+    //   new mongoose.Types.ObjectId(productId)
+    // );
     // 3️⃣ Recalculate product rating
     const stats = await Review.aggregate([
       { $match: { productId: new mongoose.Types.ObjectId(productId) } },

@@ -1,5 +1,5 @@
 import express from "express";
-import  type { Application } from "express";
+import type { Application } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
@@ -14,6 +14,7 @@ import reviewRoutes from "./routes/review.routes";
 import wishlistRoutes from "./routes/wishlist.routes";
 import adminProductRoutes from "./routes/admin.product.routes";
 import adminAnalyticsRoutes from "./routes/admin.analytics.routes";
+import adminOrderRoutes from "./routes/admin.order.routes";
 dotenv.config();
 
 const app: Application = express();
@@ -52,9 +53,10 @@ app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/stripe", stripeRoutes);
-app.use("/api/reviews", reviewRoutes  );
+app.use("/api/reviews", reviewRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/admin/products", adminProductRoutes);
+app.use("/api/admin/orders", adminOrderRoutes);
 
 
 app.use("/api/admin/analytics", adminAnalyticsRoutes);

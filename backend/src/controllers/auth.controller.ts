@@ -1,4 +1,4 @@
-import  type { Request, Response } from "express";
+import type { Request, Response } from "express";
 import User from "../models/User.model";
 import { hashPassword, comparePassword } from "../services/auth.service";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
@@ -42,16 +42,16 @@ export const login = async (req: Request, res: Response) => {
 
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: false, 
+      secure: false,
       sameSite: "lax",
-      maxAge: 15 * 60 * 1000,
+      maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
     return res.json({ message: "Logged in", user });
@@ -75,9 +75,9 @@ export const refreshToken = (req: Request, res: Response) => {
     const token = req.cookies.refreshToken;
     if (!token) return res.status(401).json({ message: "No refresh token" });
 
-      const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET as string) as { userId: string, role: "user" | "admin" };
+    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET as string) as { userId: string, role: "user" | "admin" };
 
-      const newAccessToken = generateAccessToken(decoded.userId, decoded.role);
+    const newAccessToken = generateAccessToken(decoded.userId, decoded.role);
 
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
@@ -95,6 +95,9 @@ export const refreshToken = (req: Request, res: Response) => {
 
 export const getCurrentUser = async (req: any, res: Response) => {
   try {
+    console.log('req.userId', req.userId);
+    console.log('req.role', req.role);
+    console.log('Fetching current user', req);
     const user = await User.findById(req.userId).select("-password");
     return res.json({ user });
   } catch {

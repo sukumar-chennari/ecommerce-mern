@@ -19,6 +19,10 @@ router.get("/:id", requireAuth, getOrderById);
 router.get("/session/:sessionId", requireAuth, getOrderByStripeSession);
 // admin routes
 router.get("/admin/all", requireAuth, requireAdmin, adminListOrders);
-router.patch("/admin/orders/:orderId/status", requireAuth, requireAdmin,updateOrderStatus );
-
+router.patch("/admin/orders/:orderId/status", requireAuth, requireAdmin, updateOrderStatus);
+router.get(
+  "/stripe/:sessionId",
+  requireAuth,
+  getOrderByStripeSession
+);
 export default router;
