@@ -5,6 +5,7 @@ import Order from "../models/Order.model";
 const allowedTransitions: Record<string, string[]> = {
   paid: ["shipped"],
   shipped: ["delivered"],
+  pending: ["paid"],
 };
 
 // List all orders
@@ -34,6 +35,10 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
     const { status, tracking } = req.body;
+
+    console.log("orderId", orderId);
+    console.log("status", status);
+    console.log("tracking", tracking);
 
     console.log("updateOrderStatus called with:", { orderId, status, tracking });
 

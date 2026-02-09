@@ -28,7 +28,7 @@ export const adminOrderApi = api.injectEndpoints({
             { orderId: string; status: string; tracking?: any }
         >({
             query: (body) => ({
-                url: "/admin/orders/status",
+                url: `/admin/orders/${body.orderId}/status`,
                 method: "PATCH",
                 body,
             }),

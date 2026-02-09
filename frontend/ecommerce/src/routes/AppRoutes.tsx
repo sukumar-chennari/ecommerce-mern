@@ -114,23 +114,23 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-      <Route
+      {/* <Route
         path="/admin/orders"
         element={
           <ProtectedRoute adminOnly>
             <AdminOrdersPage />
           </ProtectedRoute>
         }
-      />
+      /> */}
 
-      <Route
+      {/* <Route
         path="/admin/orders/:id"
         element={
           <ProtectedRoute adminOnly>
             <AdminOrderDetailsPage />
           </ProtectedRoute>
         }
-      />
+      /> */}
 
       <Route
         path="/wishlist"

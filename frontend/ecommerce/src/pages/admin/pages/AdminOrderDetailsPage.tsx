@@ -4,11 +4,18 @@ import {
     useUpdateOrderStatusMutation,
 } from "../../../features/admin/adminOrderApi";
 
+
+const nextStatusMap: any = {
+    pending: "paid",
+    paid: "shipped",
+    shipped: "delivered",
+};
+
 const AdminOrderDetailsPage = () => {
     const { id } = useParams<{ id: string }>();
 
     console.log('from admin order details page', id);
-    const { data, isLoading } = useGetAdminOrderByIdQuery(id!)
+    const { data, isLoading, refetch } = useGetAdminOrderByIdQuery(id!)
     const [updateStatus, { isLoading: updating }] =
         useUpdateOrderStatusMutation();
 
@@ -16,6 +23,8 @@ const AdminOrderDetailsPage = () => {
     if (!data) return <div className="p-6 text-red-500">Order not found</div>;
 
     const order = data.order;
+
+    console.log("order details  ", order);
 
     return (
         <div className="p-6 space-y-6">
@@ -50,9 +59,10 @@ const AdminOrderDetailsPage = () => {
                 {order.status === "paid" && (
                     <button
                         disabled={updating}
-                        onClick={() =>
-                            updateStatus({ orderId: order._id, status: "shipped" })
-                        }
+                        onClick={async () => {
+                            await updateStatus({ orderId: order._id, status: "shipped" });
+                            refetch();
+                        }}
                         className="px-5 py-2 bg-blue-600 text-white rounded-xl"
                     >
                         Mark as Shipped
@@ -62,15 +72,32 @@ const AdminOrderDetailsPage = () => {
                 {order.status === "shipped" && (
                     <button
                         disabled={updating}
-                        onClick={() =>
-                            updateStatus({ orderId: order._id, status: "delivered" })
-                        }
+                        onClick={async () => {
+                            await updateStatus({ orderId: order._id, status: "delivered" });
+                            refetch();
+                        }}
                         className="px-5 py-2 bg-green-600 text-white rounded-xl"
                     >
                         Mark as Delivered
                     </button>
                 )}
             </div>
+
+
+            {nextStatusMap[order.status] && (
+                <button
+                    className="mt-4 px-4 py-2 bg-primary text-white rounded"
+                    onClick={async () => {
+                        await updateStatus({
+                            orderId: order._id,
+                            status: nextStatusMap[order.status],
+                        });
+                        refetch();
+                    }}
+                >
+                    Mark as {nextStatusMap[order.status]}
+                </button>
+            )}
         </div>
     );
 };

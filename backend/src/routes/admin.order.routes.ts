@@ -15,6 +15,6 @@ router.get("/", requireAuth, requireAdmin, adminListOrders);
 router.get("/:id", requireAuth, requireAdmin, adminGetOrderById);
 
 // Update order status (pending → paid → shipped → delivered)
-router.patch("/:id/status", requireAuth, requireAdmin, updateOrderStatus);
+router.patch("/:orderId/status", requireAuth, requireAdmin, updateOrderStatus);
 
 export default router;
