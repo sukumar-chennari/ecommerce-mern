@@ -1,11 +1,27 @@
 import type { Request, Response } from "express";
+import { z } from "zod";
 import User from "../models/User.model";
 import { hashPassword, comparePassword } from "../services/auth.service";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
 import jwt from "jsonwebtoken";
 export const register = async (req: Request, res: Response) => {
   try {
-    const { name, email, password } = req.body;
+    const registerSchema = z.object({
+      name: z.string().min(2, "Name must be at least 2 characters"),
+      email: z.string().email("Invalid email format"),
+      password: z.string().min(6, "Password must be at least 6 characters"),
+    });
+
+    const parsed = registerSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: parsed.error.flatten(),
+      });
+    }
+
+    const { name, email, password } = parsed.data;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -28,7 +44,21 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const loginSchema = z.object({
+      email: z.string().email("Invalid email format"),
+      password: z.string().min(1, "Password is required"),
+    });
+
+    const parsed = loginSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: parsed.error.flatten(),
+      });
+    }
+
+    const { email, password } = parsed.data;
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });

@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { z } from "zod";
 import Product from "../models/Product.model";
 
 // export const createProduct = async (req: Request, res: Response) => {
@@ -18,7 +19,25 @@ const toArray = (q: string | string[] | undefined): string[] | undefined =>
 
 export const createProduct = async (req: Request, res: Response) => {
   try {
-    const product = new Product(req.body);
+    const createProductSchema = z.object({
+      name: z.string().min(1),
+      description: z.string().optional(),
+      price: z.number().positive(),
+      category: z.string().optional(),
+      brand: z.string().optional(),
+      stock: z.number().int().nonnegative().optional(),
+      images: z.array(z.string()).optional(),
+    });
+
+    const parsed = createProductSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: parsed.error.flatten(),
+      });
+    }
+
+    const product = new Product(parsed.data);
     await product.save(); // ensures pre('save') runs
     return res.status(201).json(product);
   } catch (err) {
@@ -103,15 +122,15 @@ export const getAllProducts = async (req: Request, res: Response) => {
     const [totalProducts, products] = await Promise.all([
       Product.countDocuments(mongoQuery),
 
-  //      await Product.find(mongoQuery, { score: { $meta: "textScore" } })
-  // .sort({ score: { $meta: "textScore" }, ...sortObj })
-  // .skip(skip)
-  // .limit(limit)
-  // .lean()
+      //      await Product.find(mongoQuery, { score: { $meta: "textScore" } })
+      // .sort({ score: { $meta: "textScore" }, ...sortObj })
+      // .skip(skip)
+      // .limit(limit)
+      // .lean()
       Product.find(mongoQuery)
         .sort(sortObj)
         .skip(skip)
-        .limit(limit) 
+        .limit(limit)
         .lean()
     ]);
 
@@ -144,12 +163,30 @@ export const getProductBySlug = async (req: Request, res: Response) => {
 
 export const updateProductById = async (req: Request, res: Response) => {
   try {
+    const updateProductSchema = z.object({
+      name: z.string().optional(),
+      description: z.string().optional(),
+      price: z.number().positive().optional(),
+      category: z.string().optional(),
+      brand: z.string().optional(),
+      stock: z.number().int().nonnegative().optional(),
+      images: z.array(z.string()).optional(),
+    });
+
+    const parsed = updateProductSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: parsed.error.flatten(),
+      });
+    }
+
     const updated = await Product.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      parsed.data,
       { new: true }
     );
-    
+
     if (!updated) {
       return res.status(404).json({ message: "Product not found" });
     }

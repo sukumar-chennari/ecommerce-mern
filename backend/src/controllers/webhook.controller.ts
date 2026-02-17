@@ -1,4 +1,5 @@
-import  type { Request, Response } from "express";
+import type { Request, Response } from "express";
+import { z } from "zod";
 import mongoose from "mongoose";
 import Stripe from "stripe";
 import dotenv from "dotenv";
@@ -42,11 +43,18 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
     const paymentIntent = eventType === "payment_intent.succeeded" ? (event.data.object as Stripe.PaymentIntent) : null;
 
     const orderId = session?.metadata?.orderId || paymentIntent?.metadata?.orderId;
-    if (!orderId) {
+
+    // Validate orderId is present and looks like a Mongo ID
+    const metadataSchema = z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Order ID");
+
+    const parsed = metadataSchema.safeParse(orderId);
+    if (!parsed.success) {
       // record event and ack (we won't retry endlessly)
-      await WebhookEvent.create({ eventId, processedAt: new Date(), raw: event, error: "Missing orderId in metadata" });
-      return res.status(400).send("Missing orderId in metadata");
+      await WebhookEvent.create({ eventId, processedAt: new Date(), raw: event, error: "Missing or invalid orderId in metadata" });
+      return res.status(400).send("Missing or invalid orderId in metadata");
     }
+
+    // const validOrderId = parsed.data; // we can use orderId directly since it's validated strings
 
     const mongoSession = await mongoose.startSession();
     try {

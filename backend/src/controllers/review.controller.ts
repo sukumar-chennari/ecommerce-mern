@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { z } from "zod";
 import mongoose from "mongoose";
 import Review from "../models/Review.model";
 import Order from "../models/Order.model";
@@ -12,7 +13,22 @@ interface AuthRequest extends Request {
 export const createReview = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
-    const { productId, rating, comment } = req.body;
+
+    const createReviewSchema = z.object({
+      productId: z.string(),
+      rating: z.number().min(1).max(5),
+      comment: z.string().optional(),
+    });
+
+    const parsed = createReviewSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: parsed.error.flatten(),
+      });
+    }
+
+    const { productId, rating, comment } = parsed.data;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });

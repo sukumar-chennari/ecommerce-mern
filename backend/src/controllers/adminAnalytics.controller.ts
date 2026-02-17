@@ -1,10 +1,25 @@
 import { Request, Response } from "express";
+import { z } from "zod";
 import Order from "../models/Order.model";
 import mongoose from "mongoose";
 
 export const getRevenueAnalytics = async (req: Request, res: Response) => {
   try {
-    const { startDate, endDate, groupBy = "day" } = req.query;
+    const revenueAnalyticsSchema = z.object({
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      groupBy: z.enum(["day", "month"]).optional(),
+    });
+
+    const parsed = revenueAnalyticsSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: parsed.error.flatten(),
+      });
+    }
+
+    const { startDate, endDate, groupBy = "day" } = parsed.data;
 
     // const matchStage: any = {
     //   status: "paid",
@@ -57,7 +72,20 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
 
 export const getOrderStatusAnalytics = async (req: Request, res: Response) => {
   try {
-    const { startDate, endDate } = req.query;
+    const orderStatusAnalyticsSchema = z.object({
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    });
+
+    const parsed = orderStatusAnalyticsSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: parsed.error.flatten(),
+      });
+    }
+
+    const { startDate, endDate } = parsed.data;
 
     const matchStage: any = {};
 
@@ -103,7 +131,19 @@ export const getOrderStatusAnalytics = async (req: Request, res: Response) => {
 
 export const getTopProducts = async (req: Request, res: Response) => {
   try {
-    const { limit = 5 } = req.query;
+    const topProductsSchema = z.object({
+      limit: z.coerce.number().int().positive().optional().default(5),
+    });
+
+    const parsed = topProductsSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: parsed.error.flatten(),
+      });
+    }
+
+    const { limit } = parsed.data;
 
     const topProducts = await Order.aggregate([
       // Only completed / revenue-generating orders

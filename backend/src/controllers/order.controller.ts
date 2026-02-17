@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { z } from "zod";
 import mongoose from "mongoose";
 import Cart from "../models/Cart.model";
 import Product from "../models/Product.model";
@@ -74,8 +75,27 @@ export const createOrderFromCart = async (req: AuthRequest, res: Response) => {
     const tax = Math.round(subtotal * taxRate);
     const total = subtotal + shipping + tax;
 
-    // Optionally capture shippingAddress from body
-    const shippingAddress = req.body.shippingAddress || undefined;
+    // Validate shipping address if present
+    const shippingAddressSchema = z.object({
+      name: z.string().optional(),
+      addressLine1: z.string().optional(),
+      addressLine2: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      postalCode: z.string().optional(),
+      country: z.string().optional(),
+    }).optional();
+
+    const parsed = shippingAddressSchema.safeParse(req.body.shippingAddress);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Invalid shipping address",
+        errors: parsed.error.flatten(),
+      });
+    }
+
+    const shippingAddress = parsed.data || undefined;
 
     // Create order document (status pending)
     const order = await Order.create({

@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 
+import morgan from "morgan";
 import { errorHandler } from "./middlewares/error.middleware";
 
 import dotenv from "dotenv";
@@ -40,6 +41,8 @@ const authLimiter = rateLimit({
 
 app.use(globalLimiter);
 
+app.use(morgan("combined"))
+
 app.use(helmet());
 
 // Webhook endpoint must use raw body parser
@@ -69,14 +72,14 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 app.use("/api/auth", authLimiter, authRoutes);
-app.use("/api/products", authLimiter, productRoutes);
-app.use("/api/cart", authLimiter, cartRoutes);
-app.use("/api/orders", authLimiter, orderRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/cart", cartRoutes);
+app.use("/api/orders", orderRoutes);
 app.use("/api/stripe", authLimiter, stripeRoutes);
 app.use("/api/reviews", authLimiter, reviewRoutes);
 app.use("/api/wishlist", authLimiter, wishlistRoutes);
-app.use("/api/admin/products", authLimiter, adminProductRoutes);
-app.use("/api/admin/orders", authLimiter, adminOrderRoutes);
+app.use("/api/admin/products", adminProductRoutes);
+app.use("/api/admin/orders", adminOrderRoutes);
 
 
 app.use("/api/admin/analytics", authLimiter, adminAnalyticsRoutes);

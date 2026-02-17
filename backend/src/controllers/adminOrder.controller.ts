@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { z } from "zod";
 import mongoose from "mongoose";
 import Order from "../models/Order.model";
 
@@ -34,7 +35,25 @@ export const adminGetOrderById = async (req: Request, res: Response) => {
 export const updateOrderStatus = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
-    const { status, tracking } = req.body;
+    const updateOrderStatusSchema = z.object({
+      status: z.enum(["pending", "paid", "shipped", "delivered", "cancelled", "failed", "refunded"]),
+      tracking: z.object({
+        carrier: z.string().optional(),
+        trackingNumber: z.string().optional(),
+        trackingUrl: z.string().optional(),
+      }).optional(),
+    });
+
+    const parsed = updateOrderStatusSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: parsed.error.flatten(),
+      });
+    }
+
+    const { status, tracking } = parsed.data;
 
     console.log("orderId", orderId);
     console.log("status", status);

@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { z } from "zod";
 import mongoose from "mongoose";
 import Wishlist from "../models/Wishlist.model";
 
@@ -9,7 +10,18 @@ interface AuthRequest extends Request {
 export const addToWishlist = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
-    const { productId } = req.body;
+    const addToWishlistSchema = z.object({
+      productId: z.string(),
+    });
+
+    const parsed = addToWishlistSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: parsed.error.flatten(),
+      });
+    }
+    const { productId } = parsed.data;
 
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 

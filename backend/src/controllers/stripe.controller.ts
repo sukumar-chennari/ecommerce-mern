@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { z } from "zod";
 import Stripe from "stripe";
 import Order from "../models/Order.model";
 import dotenv from "dotenv";
@@ -12,7 +13,20 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
 // Create Checkout session (frontend will redirect to session.url)
 export const createCheckoutSession = async (req: Request, res: Response) => {
   try {
-    const { orderId } = req.body;
+    const createCheckoutSessionSchema = z.object({
+      orderId: z.string().min(1, "Order ID is required"),
+    });
+
+    const parsed = createCheckoutSessionSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: parsed.error.flatten(),
+      });
+    }
+
+    const { orderId } = parsed.data;
     if (!orderId) return res.status(400).json({ message: "Missing orderId" });
 
     const order = await Order.findById(orderId).lean();

@@ -1,4 +1,5 @@
-import  type { Request, Response } from "express";
+import type { Request, Response } from "express";
+import { z } from "zod";
 import mongoose from "mongoose";
 import Cart from "../models/Cart.model";
 import Product from "../models/Product.model";
@@ -52,7 +53,21 @@ export const getCart = async (req: AuthRequest, res: Response) => {
 export const addToCart = async (req: AuthRequest, res: Response) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.userId!);
-    const { productId, quantity = 1 } = req.body;
+
+    const addToCartSchema = z.object({
+      productId: z.string(),
+      quantity: z.number().int().positive().optional().default(1),
+    });
+
+    const parsed = addToCartSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: parsed.error.flatten(),
+      });
+    }
+
+    const { productId, quantity } = parsed.data;
 
     if (!mongoose.isValidObjectId(productId)) {
       return res.status(400).json({ message: "Invalid productId" });
@@ -101,7 +116,19 @@ export const updateCartItem = async (req: AuthRequest, res: Response) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.userId!);
     const { productId } = req.params;
-    const { quantity } = req.body;
+
+    const updateCartSchema = z.object({
+      quantity: z.number().int(),
+    });
+
+    const parsed = updateCartSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: parsed.error.flatten(),
+      });
+    }
+    const { quantity } = parsed.data;
 
     if (!mongoose.isValidObjectId(productId)) {
       return res.status(400).json({ message: "Invalid productId" });
