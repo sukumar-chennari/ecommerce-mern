@@ -33,6 +33,16 @@ export const adminOrderApi = api.injectEndpoints({
                 body,
             }),
         }),
+
+        getRevenueAnalytics: builder.query<any, void>({
+            query: () => "/admin/analytics/revenue",
+        }),
+        getOrderStatusAnalytics: builder.query<any, void>({
+            query: () => "/admin/analytics/orders",
+        }),
+        getTopProducts: builder.query<any, void>({
+            query: () => "/admin/analytics/top-products",
+        }),
     }),
 });
 
@@ -40,4 +50,7 @@ export const {
     useGetAdminOrdersQuery,
     useGetAdminOrderByIdQuery,
     useUpdateOrderStatusMutation,
+    useGetRevenueAnalyticsQuery,
+    useGetOrderStatusAnalyticsQuery,
+    useGetTopProductsQuery,
 } = adminOrderApi;

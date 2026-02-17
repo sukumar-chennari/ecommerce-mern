@@ -2,6 +2,11 @@ import express from "express";
 import type { Application } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+
+import { errorHandler } from "./middlewares/error.middleware";
+
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes";
 import productRoutes from "./routes/product.routes";
@@ -17,10 +22,25 @@ import adminAnalyticsRoutes from "./routes/admin.analytics.routes";
 import adminOrderRoutes from "./routes/admin.order.routes";
 dotenv.config();
 
+
 const app: Application = express();
 
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // 200 requests per IP per window
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10, // only 10 login attempts per 15 minutes
+  message: "Too many login attempts. Try again later.",
+});
 
+app.use(globalLimiter);
+
+app.use(helmet());
 
 // Webhook endpoint must use raw body parser
 app.post("/webhook", express.raw({ type: "application/json" }), stripeWebhookHandler);
@@ -48,16 +68,19 @@ app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({ status: "OK" });
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/products", productRoutes);
-app.use("/api/cart", cartRoutes);
-app.use("/api/orders", orderRoutes);
-app.use("/api/stripe", stripeRoutes);
-app.use("/api/reviews", reviewRoutes);
-app.use("/api/wishlist", wishlistRoutes);
-app.use("/api/admin/products", adminProductRoutes);
-app.use("/api/admin/orders", adminOrderRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/products", authLimiter, productRoutes);
+app.use("/api/cart", authLimiter, cartRoutes);
+app.use("/api/orders", authLimiter, orderRoutes);
+app.use("/api/stripe", authLimiter, stripeRoutes);
+app.use("/api/reviews", authLimiter, reviewRoutes);
+app.use("/api/wishlist", authLimiter, wishlistRoutes);
+app.use("/api/admin/products", authLimiter, adminProductRoutes);
+app.use("/api/admin/orders", authLimiter, adminOrderRoutes);
 
 
-app.use("/api/admin/analytics", adminAnalyticsRoutes);
+app.use("/api/admin/analytics", authLimiter, adminAnalyticsRoutes);
+
+
+app.use(errorHandler);
 export default app;

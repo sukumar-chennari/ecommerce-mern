@@ -14,6 +14,14 @@ const start = async () => {
   try {
     console.log("Connecting to MongoDB...");
     await mongoose.connect(process.env.MONGO_URI as string);
+
+    if (!process.env.MONGO_URI) {
+      throw new Error("MONGO_URI is missing");
+    }
+
+    if (!process.env.JWT_SECRET) {
+      throw new Error("JWT_SECRET is missing");
+    }
     console.log("MongoDB connected");
 
     app.listen(PORT, () => {

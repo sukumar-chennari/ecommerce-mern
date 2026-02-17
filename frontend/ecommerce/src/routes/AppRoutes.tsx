@@ -13,6 +13,7 @@ import OrderDetailsPage from "../pages/OrderDetailsPage";
 import AdminOrdersPage from "../pages/admin/pages/AdminOrdersPage";
 import AdminOrderDetailsPage from "../pages/admin/pages/AdminOrderDetailsPage";
 import WishlistPage from "../pages/WishlistPage";
+import OrderSuccessPage from "../pages/OrderSuccessPage";
 
 const AppRoutes = () => {
   return (
@@ -144,6 +145,16 @@ const AppRoutes = () => {
       >
 
       </Route>
+
+      <Route
+        path="/checkout/success"
+        element={
+          <ProtectedRoute>
+            <OrderSuccessPage />
+          </ProtectedRoute>
+        }
+      />
+
     </Routes>
   );
 };

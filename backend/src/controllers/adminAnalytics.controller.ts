@@ -6,8 +6,11 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
   try {
     const { startDate, endDate, groupBy = "day" } = req.query;
 
+    // const matchStage: any = {
+    //   status: "paid",
+    // };
     const matchStage: any = {
-      status: "paid",
+      payment: { $exists: true },
     };
 
     if (startDate || endDate) {
@@ -19,14 +22,14 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
     const groupId =
       groupBy === "month"
         ? {
-            year: { $year: "$createdAt" },
-            month: { $month: "$createdAt" },
-          }
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" },
+        }
         : {
-            year: { $year: "$createdAt" },
-            month: { $month: "$createdAt" },
-            day: { $dayOfMonth: "$createdAt" },
-          };
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" },
+          day: { $dayOfMonth: "$createdAt" },
+        };
 
     const revenue = await Order.aggregate([
       { $match: matchStage },
