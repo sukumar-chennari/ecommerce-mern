@@ -14,6 +14,7 @@ import AdminOrdersPage from "../pages/admin/pages/AdminOrdersPage";
 import AdminOrderDetailsPage from "../pages/admin/pages/AdminOrderDetailsPage";
 import WishlistPage from "../pages/WishlistPage";
 import OrderSuccessPage from "../pages/OrderSuccessPage";
+import Home from "../pages/Home";
 
 const AppRoutes = () => {
   return (
@@ -25,8 +26,8 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <AppLayout>
-              {/* <Home /> */}
-              <ProductsPage />
+              <Home />
+              {/* <ProductsPage /> */}
             </AppLayout>
           </ProtectedRoute>
         }

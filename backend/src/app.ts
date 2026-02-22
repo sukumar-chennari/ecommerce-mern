@@ -71,7 +71,8 @@ app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({ status: "OK" });
 });
 
-app.use("/api/auth", authLimiter, authRoutes);
+// app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);

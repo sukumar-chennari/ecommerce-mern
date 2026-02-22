@@ -35,7 +35,7 @@ const ProductsPage = () => {
       />
 
       <div className="md:col-span-3 space-y-6">
-        <ProductGrid products={data?.data?.products || []} />
+        <ProductGrid products={data?.products || []} />
 
         <div className="flex justify-center gap-4">
           <button disabled={page === 1} onClick={() => setPage(page - 1)}>

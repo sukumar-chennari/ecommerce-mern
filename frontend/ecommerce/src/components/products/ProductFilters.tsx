@@ -20,7 +20,7 @@ const ProductFilters = ({
   setMaxPrice,
 }: Props) => {
   return (
-    <div className="space-y-4 p-4 bg-surface rounded-xl shadow-card">
+    <div className="w-full border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition rounded-xl px-3 py-2">
       <h3 className="font-semibold">Filters</h3>
 
       <select
