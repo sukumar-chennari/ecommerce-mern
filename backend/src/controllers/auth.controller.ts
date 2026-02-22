@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import User from "../models/User.model";
+import { ApiResponse } from "../utils/response.util";
 import { hashPassword, comparePassword } from "../services/auth.service";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
 import jwt from "jsonwebtoken";
@@ -15,30 +16,28 @@ export const register = async (req: Request, res: Response) => {
     const parsed = registerSchema.safeParse(req.body);
 
     if (!parsed.success) {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: parsed.error.flatten(),
-      });
+      return ApiResponse.error(res, "Validation failed", parsed.error.flatten(), 400);
     }
 
+    // ... rest of register logic
     const { name, email, password } = parsed.data;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: "Email already exists" });
+      return ApiResponse.error(res, "Email already exists", null, 400);
     }
 
     const hashed = await hashPassword(password);
-
+    // ...
     const newUser = await User.create({
       name,
       email,
       password: hashed,
     });
 
-    return res.status(201).json({ message: "User registered", user: newUser });
+    return ApiResponse.success(res, "User registered", { user: newUser }, 201);
   } catch (err) {
-    return res.status(500).json({ message: "Server error", error: err });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
@@ -52,19 +51,16 @@ export const login = async (req: Request, res: Response) => {
     const parsed = loginSchema.safeParse(req.body);
 
     if (!parsed.success) {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: parsed.error.flatten(),
-      });
+      return ApiResponse.error(res, "Validation failed", parsed.error.flatten(), 400);
     }
 
     const { email, password } = parsed.data;
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+    if (!user) return ApiResponse.error(res, "Invalid credentials", null, 400);
 
     const match = await comparePassword(password, user.password);
-    if (!match) return res.status(400).json({ message: "Invalid credentials" });
+    if (!match) return ApiResponse.error(res, "Invalid credentials", null, 400);
 
     // Pass role to token generation
     const accessToken = generateAccessToken(user._id.toString(), user.role);
@@ -79,15 +75,15 @@ export const login = async (req: Request, res: Response) => {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false,
+      secure: false, // set true in prod
       sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return res.json({ message: "Logged in", user });
+    return ApiResponse.success(res, "Logged in", { user });
   } catch (err) {
     console.error('error', err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
@@ -96,14 +92,14 @@ export const logout = (req: Request, res: Response) => {
   res.clearCookie("accessToken");
   res.clearCookie("refreshToken");
 
-  return res.json({ message: "Logged out" });
+  return ApiResponse.success(res, "Logged out");
 };
 
 
 export const refreshToken = (req: Request, res: Response) => {
   try {
     const token = req.cookies.refreshToken;
-    if (!token) return res.status(401).json({ message: "No refresh token" });
+    if (!token) return ApiResponse.error(res, "No refresh token", null, 401);
 
     const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET as string) as { userId: string, role: "user" | "admin" };
 
@@ -116,9 +112,9 @@ export const refreshToken = (req: Request, res: Response) => {
       maxAge: 15 * 60 * 1000,
     });
 
-    return res.json({ message: "Token refreshed" });
+    return ApiResponse.success(res, "Token refreshed");
   } catch {
-    return res.status(401).json({ message: "Invalid refresh token" });
+    return ApiResponse.error(res, "Invalid refresh token", null, 401);
   }
 };
 
@@ -129,8 +125,9 @@ export const getCurrentUser = async (req: any, res: Response) => {
     console.log('req.role', req.role);
     console.log('Fetching current user', req);
     const user = await User.findById(req.userId).select("-password");
-    return res.json({ user });
+
+    return ApiResponse.success(res, "Current user retrieved", { user });
   } catch {
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", null, 500);
   }
 };

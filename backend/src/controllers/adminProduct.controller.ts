@@ -7,6 +7,7 @@ import { Multer } from "multer";
 import cloudinary from "../config/cloudinary";
 import { getPublicIdFromUrl } from "../utils/cloudinary.util";
 import Order from "../models/Order.model";
+import { ApiResponse } from "../utils/response.util";
 
 
 
@@ -31,10 +32,7 @@ export const createProduct = async (req: Request, res: Response) => {
     const parsed = createProductSchema.safeParse(req.body);
 
     if (!parsed.success) {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: parsed.error.flatten(),
-      });
+      return ApiResponse.error(res, "Validation failed", parsed.error.flatten(), 400);
     }
 
     const {
@@ -60,16 +58,10 @@ export const createProduct = async (req: Request, res: Response) => {
       images,
     });
     console.log("createProduct images:", images);
-    return res.status(201).json({
-      message: "Product created",
-      product,
-    });
+    return ApiResponse.success(res, "Product created", { product }, 201);
   } catch (err) {
     console.error("createProduct error:", err);
-    return res.status(500).json({
-      message: "Server error",
-      error: err instanceof Error ? err.message : JSON.stringify(err)
-    });
+    return ApiResponse.error(res, "Server error", err instanceof Error ? err.message : JSON.stringify(err), 500);
   }
 };
 
@@ -87,16 +79,13 @@ export const updateProduct = async (req: Request, res: Response) => {
     const parsed = updateProductSchema.safeParse(req.body);
 
     if (!parsed.success) {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: parsed.error.flatten(),
-      });
+      return ApiResponse.error(res, "Validation failed", parsed.error.flatten(), 400);
     }
 
     const { productId } = req.params;
 
     if (!mongoose.isValidObjectId(productId)) {
-      return res.status(400).json({ message: "Invalid product ID" });
+      return ApiResponse.error(res, "Invalid product ID", null, 400);
     }
 
     const images = (req.files as Express.Multer.File[] | undefined)?.map(
@@ -119,7 +108,7 @@ export const updateProduct = async (req: Request, res: Response) => {
 
 
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return ApiResponse.error(res, "Product not found", null, 404);
     }
 
     if (images && images.length > 0 && product.images?.length) {
@@ -129,13 +118,10 @@ export const updateProduct = async (req: Request, res: Response) => {
         await cloudinary.uploader.destroy(publicId);
       }
     }
-    return res.json({
-      message: "Product updated",
-      product,
-    });
+    return ApiResponse.success(res, "Product updated", { product });
   } catch (err) {
     console.error("updateProduct error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
@@ -147,7 +133,7 @@ export const deleteProduct = async (req: Request, res: Response) => {
 
 
     if (!mongoose.isValidObjectId(productId)) {
-      return res.status(400).json({ message: "Invalid product ID" });
+      return ApiResponse.error(res, "Invalid product ID", null, 400);
     }
     const hasOrders = await Order.exists({
       "items.productId": productId,
@@ -158,16 +144,14 @@ export const deleteProduct = async (req: Request, res: Response) => {
         isActive: false,
       });
 
-      return res.json({
-        message: "Product archived (existing orders found)",
-      });
+      return ApiResponse.success(res, "Product archived (existing orders found)");
     }
 
     const product = await Product.findByIdAndDelete(productId);
 
 
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return ApiResponse.error(res, "Product not found", null, 404);
     }
 
     if (product.images?.length) {
@@ -178,9 +162,9 @@ export const deleteProduct = async (req: Request, res: Response) => {
     }
 
 
-    return res.json({ message: "Product deleted" });
+    return ApiResponse.success(res, "Product deleted");
   } catch (err) {
     console.error("deleteProduct error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };

@@ -21,10 +21,13 @@ export interface Cart {
     updatedAt: string;
 }
 
+import type { ApiResponse } from "../products/productApi";
+
 export const cartApi = api.injectEndpoints({
     endpoints: (builder) => ({
         getCart: builder.query<Cart, void>({
             query: () => "/cart",
+            transformResponse: (response: ApiResponse<Cart>) => response.data,
             providesTags: ["Cart"],
         }),
 
@@ -34,6 +37,8 @@ export const cartApi = api.injectEndpoints({
                 method: "POST",
                 body: { productId, quantity },
             }),
+            transformResponse: (response: ApiResponse<{ cart: Cart }>) => response.data.cart,
+            invalidatesTags: ["Cart"],
         }),
 
         updateCartItem: builder.mutation<Cart, { productId: string; quantity: number }>({
@@ -42,6 +47,7 @@ export const cartApi = api.injectEndpoints({
                 method: "PUT",
                 body: { quantity },
             }),
+            transformResponse: (response: ApiResponse<{ cart: Cart }>) => response.data.cart,
             invalidatesTags: ["Cart"],
         }),
 
@@ -50,6 +56,7 @@ export const cartApi = api.injectEndpoints({
                 url: `/cart/${itemId}`,
                 method: "DELETE",
             }),
+            transformResponse: (response: ApiResponse<{ cart: Cart }>) => response.data.cart,
             invalidatesTags: ["Cart"],
         }),
     }),

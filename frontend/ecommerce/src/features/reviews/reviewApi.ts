@@ -1,9 +1,11 @@
 import { api } from "../../app/api";
 
+import type { ApiResponse } from "../products/productApi";
+
 export const reviewApi = api.injectEndpoints({
     endpoints: (builder) => ({
         createReview: builder.mutation<
-            { message: string },
+            { review: any },
             { productId: string; rating: number; comment: string }
         >({
             query: (body) => ({
@@ -11,6 +13,7 @@ export const reviewApi = api.injectEndpoints({
                 method: "POST",
                 body,
             }),
+            transformResponse: (response: ApiResponse<{ review: any }>) => response.data,
             invalidatesTags: ["Product"],
         }),
         getProductReviews: builder.query<
@@ -18,6 +21,7 @@ export const reviewApi = api.injectEndpoints({
             string
         >({
             query: (productId) => `/reviews/product/${productId}`,
+            transformResponse: (response: ApiResponse<{ reviews: any[] }>) => response.data,
         }),
     }),
 });

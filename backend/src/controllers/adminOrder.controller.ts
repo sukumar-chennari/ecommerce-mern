@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import mongoose from "mongoose";
 import Order from "../models/Order.model";
+import { ApiResponse } from "../utils/response.util";
 
 const allowedTransitions: Record<string, string[]> = {
   paid: ["shipped"],
@@ -15,7 +16,7 @@ export const adminListOrders = async (req: Request, res: Response) => {
     .sort({ createdAt: -1 })
     .lean();
 
-  res.json({ orders });
+  return ApiResponse.success(res, "Orders retrieved successfully", { orders });
 };
 
 // Get order by ID
@@ -24,10 +25,10 @@ export const adminGetOrderById = async (req: Request, res: Response) => {
 
   const order = await Order.findById(id).lean();
   if (!order) {
-    return res.status(404).json({ message: "Order not found" });
+    return ApiResponse.error(res, "Order not found", null, 404);
   }
 
-  res.json({ order });
+  return ApiResponse.success(res, "Order retrieved successfully", { order });
 };
 
 
@@ -47,10 +48,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     const parsed = updateOrderStatusSchema.safeParse(req.body);
 
     if (!parsed.success) {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: parsed.error.flatten(),
-      });
+      return ApiResponse.error(res, "Validation failed", parsed.error.flatten(), 400);
     }
 
     const { status, tracking } = parsed.data;
@@ -62,12 +60,12 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     console.log("updateOrderStatus called with:", { orderId, status, tracking });
 
     if (!mongoose.isValidObjectId(orderId)) {
-      return res.status(400).json({ message: "Invalid order ID" });
+      return ApiResponse.error(res, "Invalid order ID", null, 400);
     }
 
     const order = await Order.findById(orderId);
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      return ApiResponse.error(res, "Order not found", null, 404);
     }
 
     const currentStatus = order.status;
@@ -78,9 +76,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
         to: status,
       });
 
-      return res.status(400).json({
-        message: `Cannot change order status from ${currentStatus} to ${status}`,
-      });
+      return ApiResponse.error(res, `Cannot change order status from ${currentStatus} to ${status}`, null, 400);
     }
 
     // Update status
@@ -104,12 +100,9 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 
     await order.save();
 
-    return res.json({
-      message: "Order status updated",
-      order,
-    });
+    return ApiResponse.success(res, "Order status updated", { order });
   } catch (err) {
     console.error("updateOrderStatus error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };

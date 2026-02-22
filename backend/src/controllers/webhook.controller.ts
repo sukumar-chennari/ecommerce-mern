@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import Order from "../models/Order.model";
 import Product from "../models/Product.model";
 import WebhookEvent from "../models/WebhookEvent.model";
+import { ApiResponse } from "../utils/response.util";
 
 dotenv.config();
 
@@ -23,7 +24,7 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
     event = stripe.webhooks.constructEvent(req.body as Buffer, sig as string, webhookSecret);
   } catch (err: any) {
     console.error("Webhook signature verification failed:", err?.message || err);
-    return res.status(400).send(`Webhook Error: ${err?.message || err}`);
+    return ApiResponse.error(res, `Webhook Error: ${err?.message || err}`, null, 400);
   }
 
   const eventId = event.id;
@@ -33,7 +34,7 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
   const existing = await WebhookEvent.findOne({ eventId }).lean();
   if (existing) {
     console.log("Duplicate event, ignoring:", eventId);
-    return res.status(200).send();
+    return ApiResponse.success(res, "Duplicate event, ignored");
   }
 
   // We're interested in checkout.session.completed or payment_intent.succeeded
@@ -51,7 +52,7 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
     if (!parsed.success) {
       // record event and ack (we won't retry endlessly)
       await WebhookEvent.create({ eventId, processedAt: new Date(), raw: event, error: "Missing or invalid orderId in metadata" });
-      return res.status(400).send("Missing or invalid orderId in metadata");
+      return ApiResponse.error(res, "Missing or invalid orderId in metadata", null, 400);
     }
 
     // const validOrderId = parsed.data; // we can use orderId directly since it's validated strings
@@ -116,7 +117,7 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
       //
       // Best for demo: return 200 so webhook retries do not cause duplicate refunds.
       // Production: you may return 500 to allow retries after transient problems.
-      return res.status(200).send(); // acknowledging but logged failure
+      return ApiResponse.success(res, "Transaction failed but acknowledged (to prevent endless retry)", { error: txErr.message }); // acknowledging but logged failure
     } finally {
       mongoSession.endSession();
     }
@@ -124,5 +125,5 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
 
   // For other event types, record and ack
   await WebhookEvent.create({ eventId, processedAt: new Date(), raw: event });
-  return res.status(200).send();
+  return ApiResponse.success(res, "Webhook processed");
 };

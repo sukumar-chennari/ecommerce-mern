@@ -10,7 +10,15 @@ export interface Product {
   description?: string;
   stock: number;
   averageRating?: number;
+
   reviewCount?: number;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+  error?: any;
 }
 
 export const productApi = api.injectEndpoints({
@@ -30,27 +38,31 @@ export const productApi = api.injectEndpoints({
         maxPrice?: number;
       }
     >({
-      query: ({ page = 1, category, brand, minPrice, maxPrice }) => {
-        const params = new URLSearchParams();
+      query: (params) => {
+        const queryParams = new URLSearchParams();
 
-        params.set("page", page.toString());
-        params.set("limit", "12");
-        params.set("sort", "createdAt:desc");
-        params.set("fields", "_id,name,price,images,slug");
-        params.set("populate", "images");
+        if (params.page) queryParams.set("page", params.page.toString());
+        queryParams.set("limit", "12");
+        queryParams.set("sort", "createdAt:desc");
 
-        if (category) params.set("category", category);
-        if (brand) params.set("brand", brand);
-        if (minPrice) params.set("minPrice", minPrice.toString());
-        if (maxPrice) params.set("maxPrice", maxPrice.toString());
+        if (params.category) queryParams.set("category", params.category);
+        if (params.brand) queryParams.set("brand", params.brand);
+        if (params.minPrice) queryParams.set("minPrice", params.minPrice.toString());
+        if (params.maxPrice) queryParams.set("maxPrice", params.maxPrice.toString());
 
-        return `/products?${params.toString()}`;
+        return `/products?${queryParams.toString()}`;
       },
+      transformResponse: (response: ApiResponse<{
+        products: Product[];
+        total: number;
+        page: number;
+        totalPages: number;
+      }>) => response.data,
     }),
 
     getProductBySlug: builder.query<Product, string>({
-      query: (slug) =>
-        `/products/${slug}?fields=_id,name,price,images,slug,description,stock`,
+      query: (slug) => `/products/${slug}`,
+      transformResponse: (response: ApiResponse<Product>) => response.data,
     }),
   }),
 });

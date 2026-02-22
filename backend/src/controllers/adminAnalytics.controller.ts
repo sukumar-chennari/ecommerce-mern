@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import Order from "../models/Order.model";
 import mongoose from "mongoose";
+import { ApiResponse } from "../utils/response.util";
 
 export const getRevenueAnalytics = async (req: Request, res: Response) => {
   try {
@@ -13,10 +14,7 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
 
     const parsed = revenueAnalyticsSchema.safeParse(req.query);
     if (!parsed.success) {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: parsed.error.flatten(),
-      });
+      return ApiResponse.error(res, "Validation failed", parsed.error.flatten(), 400);
     }
 
     const { startDate, endDate, groupBy = "day" } = parsed.data;
@@ -60,13 +58,13 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
 
     const totalRevenue = revenue.reduce((sum, r) => sum + r.totalRevenue, 0);
 
-    return res.json({
+    return ApiResponse.success(res, "Revenue analytics retrieved successfully", {
       totalRevenue,
       breakdown: revenue,
     });
   } catch (err) {
     console.error("getRevenueAnalytics error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
@@ -79,10 +77,7 @@ export const getOrderStatusAnalytics = async (req: Request, res: Response) => {
 
     const parsed = orderStatusAnalyticsSchema.safeParse(req.query);
     if (!parsed.success) {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: parsed.error.flatten(),
-      });
+      return ApiResponse.error(res, "Validation failed", parsed.error.flatten(), 400);
     }
 
     const { startDate, endDate } = parsed.data;
@@ -118,14 +113,14 @@ export const getOrderStatusAnalytics = async (req: Request, res: Response) => {
       return acc;
     }, {});
 
-    return res.json({
+    return ApiResponse.success(res, "Order status analytics retrieved successfully", {
       totalOrders: stats.reduce((s, v) => s + v.count, 0),
       byStatus: summary,
       raw: stats,
     });
   } catch (err) {
     console.error("getOrderStatusAnalytics error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
@@ -137,10 +132,7 @@ export const getTopProducts = async (req: Request, res: Response) => {
 
     const parsed = topProductsSchema.safeParse(req.query);
     if (!parsed.success) {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: parsed.error.flatten(),
-      });
+      return ApiResponse.error(res, "Validation failed", parsed.error.flatten(), 400);
     }
 
     const { limit } = parsed.data;
@@ -199,9 +191,9 @@ export const getTopProducts = async (req: Request, res: Response) => {
       },
     ]);
 
-    return res.json({ topProducts });
+    return ApiResponse.success(res, "Top products retrieved successfully", { topProducts });
   } catch (err) {
     console.error("getTopProducts error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };

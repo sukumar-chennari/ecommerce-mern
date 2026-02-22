@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import mongoose from "mongoose";
 import Wishlist from "../models/Wishlist.model";
+import { ApiResponse } from "../utils/response.util";
 
 interface AuthRequest extends Request {
   userId?: string;
@@ -16,17 +17,14 @@ export const addToWishlist = async (req: AuthRequest, res: Response) => {
 
     const parsed = addToWishlistSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: parsed.error.flatten(),
-      });
+      return ApiResponse.error(res, "Validation failed", parsed.error.flatten(), 400);
     }
     const { productId } = parsed.data;
 
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!userId) return ApiResponse.error(res, "Unauthorized", null, 401);
 
     if (!mongoose.isValidObjectId(productId)) {
-      return res.status(400).json({ message: "Invalid productId" });
+      return ApiResponse.error(res, "Invalid productId", null, 400);
     }
 
     const wishlistItem = await Wishlist.create({
@@ -34,18 +32,13 @@ export const addToWishlist = async (req: AuthRequest, res: Response) => {
       productId,
     });
 
-    return res.status(201).json({
-      message: "Added to wishlist",
-      wishlistItem,
-    });
+    return ApiResponse.success(res, "Added to wishlist", { wishlistItem }, 201);
   } catch (err: any) {
     if (err.code === 11000) {
-      return res.status(400).json({
-        message: "Product already in wishlist",
-      });
+      return ApiResponse.error(res, "Product already in wishlist", null, 400);
     }
     console.error("addToWishlist error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
@@ -54,33 +47,33 @@ export const removeFromWishlist = async (req: AuthRequest, res: Response) => {
     const userId = req.userId;
     const { productId } = req.params;
 
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!userId) return ApiResponse.error(res, "Unauthorized", null, 401);
 
     await Wishlist.findOneAndDelete({
       userId,
       productId,
     });
 
-    return res.json({ message: "Removed from wishlist" });
+    return ApiResponse.success(res, "Removed from wishlist");
   } catch (err) {
     console.error("removeFromWishlist error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
 export const getMyWishlist = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!userId) return ApiResponse.error(res, "Unauthorized", null, 401);
 
     const wishlist = await Wishlist.find({ userId })
       .populate("productId", "name price images averageRating reviewCount")
       .sort({ createdAt: -1 })
       .lean();
 
-    return res.json({ wishlist });
+    return ApiResponse.success(res, "Wishlist retrieved successfully", { wishlist });
   } catch (err) {
     console.error("getMyWishlist error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };

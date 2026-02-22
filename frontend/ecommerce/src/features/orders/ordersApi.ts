@@ -1,21 +1,22 @@
 import { api } from "../../app/api";
 
+import type { ApiResponse } from "../products/productApi";
+
 export const ordersApi = api.injectEndpoints({
     endpoints: (builder) => ({
-        createOrder: builder.mutation<any, void, { url: string }>({
+        createOrder: builder.mutation<any, void>({
             query: () => ({
                 url: "/orders",
                 method: "POST",
                 body: {},
             }),
-
-
-
-            invalidatesTags: ["Cart"],
+            transformResponse: (response: ApiResponse<{ order: any }>) => response.data.order,
+            invalidatesTags: ["Cart", "Order"],
         }),
 
         getOrderByStripeSession: builder.query<any, string>({
             query: (sessionId) => `/orders/stripe/${sessionId}`,
+            transformResponse: (response: ApiResponse<{ order: any }>) => response.data.order,
             providesTags: ["Order"],
         }),
 
@@ -25,6 +26,13 @@ export const ordersApi = api.injectEndpoints({
             totalPages: number;
         }, { page: number }>({
             query: ({ page = 1 }) => `/orders?page=${page}`,
+            transformResponse: (response: ApiResponse<{
+                orders: any[];
+                page: number;
+                limit: number;
+                total: number;
+                totalPages: number;
+            }>) => response.data,
             providesTags: ["Order"],
         }),
 
@@ -42,6 +50,12 @@ export const ordersApi = api.injectEndpoints({
             string
         >({
             query: (id) => `/orders/${id}`,
+            transformResponse: (response: ApiResponse<{
+                order: any;
+                progress: any;
+                estimatedDelivery: string;
+                reviewEligibility: boolean;
+            }>) => response.data,
         }),
     }),
 });

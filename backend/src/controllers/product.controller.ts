@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import Product from "../models/Product.model";
+import { ApiResponse } from "../utils/response.util";
 
 // export const createProduct = async (req: Request, res: Response) => {
 //   try {
@@ -31,17 +32,14 @@ export const createProduct = async (req: Request, res: Response) => {
 
     const parsed = createProductSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: parsed.error.flatten(),
-      });
+      return ApiResponse.error(res, "Validation failed", parsed.error.flatten(), 400);
     }
 
     const product = new Product(parsed.data);
     await product.save(); // ensures pre('save') runs
-    return res.status(201).json(product);
+    return ApiResponse.success(res, "Product created", product, 201);
   } catch (err) {
-    return res.status(500).json({ message: "Server error", error: err });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
@@ -136,7 +134,7 @@ export const getAllProducts = async (req: Request, res: Response) => {
 
     const totalPages = Math.ceil(totalProducts / limit);
 
-    return res.json({
+    return ApiResponse.success(res, "Products retrieved successfully", {
       products,
       page,
       limit,
@@ -145,19 +143,19 @@ export const getAllProducts = async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("getAllProducts error:", err);
-    return res.status(500).json({ message: "Server error", error: err });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
 export const getProductBySlug = async (req: Request, res: Response) => {
   const { slug } = req.params;
-  if (!slug) return res.status(400).json({ message: "Missing product slug" });
+  if (!slug) return ApiResponse.error(res, "Missing product slug", null, 400);
   try {
     const product = await Product.findOne({ slug });
-    if (!product) return res.status(404).json({ message: "Product not found" });
-    return res.json(product);
+    if (!product) return ApiResponse.error(res, "Product not found", null, 404);
+    return ApiResponse.success(res, "Product retrieved", product);
   } catch {
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error");
   }
 };
 
@@ -175,10 +173,7 @@ export const updateProductById = async (req: Request, res: Response) => {
 
     const parsed = updateProductSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: parsed.error.flatten(),
-      });
+      return ApiResponse.error(res, "Validation failed", parsed.error.flatten(), 400);
     }
 
     const updated = await Product.findByIdAndUpdate(
@@ -188,12 +183,12 @@ export const updateProductById = async (req: Request, res: Response) => {
     );
 
     if (!updated) {
-      return res.status(404).json({ message: "Product not found" });
+      return ApiResponse.error(res, "Product not found", null, 404);
     }
 
-    return res.json(updated);
+    return ApiResponse.success(res, "Product updated", updated);
   } catch {
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error");
   }
 };
 
@@ -203,12 +198,12 @@ export const deleteProductById = async (req: Request, res: Response) => {
     const deleted = await Product.findByIdAndDelete(req.params.id);
 
     if (!deleted) {
-      return res.status(404).json({ message: "Product not found" });
+      return ApiResponse.error(res, "Product not found", null, 404);
     }
 
-    return res.json({ message: "Product deleted" });
+    return ApiResponse.success(res, "Product deleted");
   } catch {
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error");
   }
 };
 

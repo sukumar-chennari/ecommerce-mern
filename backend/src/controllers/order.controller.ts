@@ -6,6 +6,7 @@ import Product from "../models/Product.model";
 import Order from "../models/Order.model";
 import Stripe from "stripe";
 import Review from "../models/Review.model";
+import { ApiResponse } from "../utils/response.util";
 
 interface AuthRequest extends Request {
   userId?: string;
@@ -29,12 +30,12 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-12
 export const createOrderFromCart = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!userId) return ApiResponse.error(res, "Unauthorized", null, 401);
 
     // Load cart
     const cart = await Cart.findOne({ userId }).lean();
     if (!cart || !cart.items || cart.items.length === 0) {
-      return res.status(400).json({ message: "Cart is empty" });
+      return ApiResponse.error(res, "Cart is empty", null, 400);
     }
 
     // Validate each product exists and has stock
@@ -45,14 +46,10 @@ export const createOrderFromCart = async (req: AuthRequest, res: Response) => {
         "name price stock images"
       );
       if (!product) {
-        return res
-          .status(404)
-          .json({ message: `Product ${ci.productId} not found` });
+        return ApiResponse.error(res, `Product ${ci.productId} not found`, null, 404);
       }
       if (product.stock < ci.quantity) {
-        return res.status(400).json({
-          message: `Insufficient stock for product ${product.name}. Available: ${product.stock}, Requested: ${ci.quantity}`,
-        });
+        return ApiResponse.error(res, `Insufficient stock for product ${product.name}. Available: ${product.stock}, Requested: ${ci.quantity}`, null, 400);
       }
 
       orderItems.push({
@@ -89,10 +86,7 @@ export const createOrderFromCart = async (req: AuthRequest, res: Response) => {
     const parsed = shippingAddressSchema.safeParse(req.body.shippingAddress);
 
     if (!parsed.success) {
-      return res.status(400).json({
-        message: "Invalid shipping address",
-        errors: parsed.error.flatten(),
-      });
+      return ApiResponse.error(res, "Invalid shipping address", parsed.error.flatten(), 400);
     }
 
     const shippingAddress = parsed.data || undefined;
@@ -116,10 +110,10 @@ export const createOrderFromCart = async (req: AuthRequest, res: Response) => {
     // Clear the cart (we delete the cart document to avoid leftover state)
     await Cart.findOneAndDelete({ userId });
 
-    return res.status(201).json({ message: "Order created", order });
+    return ApiResponse.success(res, "Order created", { order }, 201);
   } catch (err) {
     console.error("createOrderFromCart error:", err);
-    return res.status(500).json({ message: "Server error", error: err });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
@@ -129,7 +123,7 @@ export const createOrderFromCart = async (req: AuthRequest, res: Response) => {
 export const getMyOrders = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!userId) return ApiResponse.error(res, "Unauthorized", null, 401);
 
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.max(1, Math.min(50, Number(req.query.limit) || 10));
@@ -144,7 +138,7 @@ export const getMyOrders = async (req: AuthRequest, res: Response) => {
         .lean(),
     ]);
 
-    return res.json({
+    return ApiResponse.success(res, "Orders retrieved successfully", {
       orders,
       page,
       limit,
@@ -153,7 +147,7 @@ export const getMyOrders = async (req: AuthRequest, res: Response) => {
     });
   } catch (err) {
     console.error("getMyOrders error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
@@ -175,7 +169,7 @@ export const adminListOrders = async (req: Request, res: Response) => {
       Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     ]);
 
-    return res.json({
+    return ApiResponse.success(res, "Orders retrieved successfully", {
       orders,
       page,
       limit,
@@ -184,7 +178,7 @@ export const adminListOrders = async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("adminListOrders error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
@@ -199,17 +193,17 @@ export const getOrderById = async (req: AuthRequest, res: Response) => {
     console.log(' get by order id', id);
 
     if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({ message: "Invalid order ID" });
+      return ApiResponse.error(res, "Invalid order ID", null, 400);
     }
 
     const order = await Order.findById(id).lean();
-    if (!order) return res.status(404).json({ message: "Order not found" });
+    if (!order) return ApiResponse.error(res, "Order not found", null, 404);
 
     const userId = req.userId;
     const isAdmin = (req as any).isAdmin;
 
     if (!isAdmin && order.userId.toString() !== userId) {
-      return res.status(403).json({ message: "Not authorized" });
+      return ApiResponse.error(res, "Not authorized", null, 403);
     }
 
     const progress = {
@@ -237,7 +231,7 @@ export const getOrderById = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    return res.json({
+    return ApiResponse.success(res, "Order retrieved successfully", {
       order,
       progress,
       estimatedDelivery: order.deliveryEstimate,
@@ -245,7 +239,7 @@ export const getOrderById = async (req: AuthRequest, res: Response) => {
     });
   } catch (err) {
     console.error("getOrderById error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
@@ -282,21 +276,21 @@ export const getOrderById = async (req: AuthRequest, res: Response) => {
 export const getOrderByStripeSession = async (req: AuthRequest, res: Response) => {
   try {
     const { sessionId } = req.params;
-    if (!sessionId) return res.status(400).json({ message: "Missing sessionId" });
+    if (!sessionId) return ApiResponse.error(res, "Missing sessionId", null, 400);
 
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     const orderId = session.metadata?.orderId;
 
-    if (!orderId) return res.status(400).json({ message: "Order not found in session metadata" });
+    if (!orderId) return ApiResponse.error(res, "Order not found in session metadata", null, 400);
 
     const order = await Order.findById(orderId).lean();
-    if (!order) return res.status(404).json({ message: "Order not found" });
+    if (!order) return ApiResponse.error(res, "Order not found", null, 404);
 
-    return res.json({ order });
+    return ApiResponse.success(res, "Order retrieved successfully", { order });
 
   } catch (err) {
     console.error("getOrderByStripeSession error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 

@@ -18,6 +18,7 @@ const ProductsPage = () => {
     maxPrice: maxPrice || undefined,
   });
 
+  console.log("data", data);
   if (isLoading) return <p>Loading...</p>;
 
   return (
@@ -34,7 +35,7 @@ const ProductsPage = () => {
       />
 
       <div className="md:col-span-3 space-y-6">
-        <ProductGrid products={data?.products || []} />
+        <ProductGrid products={data?.data?.products || []} />
 
         <div className="flex justify-center gap-4">
           <button disabled={page === 1} onClick={() => setPage(page - 1)}>

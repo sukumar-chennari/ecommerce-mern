@@ -5,6 +5,7 @@ import Review from "../models/Review.model";
 import Order from "../models/Order.model";
 import Product from "../models/Product.model";
 import { recalculateProductRating } from "../utils/review.util";
+import { ApiResponse } from "../utils/response.util";
 
 interface AuthRequest extends Request {
   userId?: string;
@@ -22,28 +23,23 @@ export const createReview = async (req: AuthRequest, res: Response) => {
 
     const parsed = createReviewSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: parsed.error.flatten(),
-      });
+      return ApiResponse.error(res, "Validation failed", parsed.error.flatten(), 400);
     }
 
     const { productId, rating, comment } = parsed.data;
 
     if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
+      return ApiResponse.error(res, "Unauthorized", null, 401);
     }
 
     if (!mongoose.isValidObjectId(productId)) {
-      return res.status(400).json({ message: "Invalid productId" });
+      return ApiResponse.error(res, "Invalid productId", null, 400);
     }
 
     // 1️⃣ Check if already reviewed (FAST)
     const existingReview = await Review.findOne({ userId, productId });
     if (existingReview) {
-      return res.status(400).json({
-        message: "You have already reviewed this product",
-      });
+      return ApiResponse.error(res, "You have already reviewed this product", null, 400);
     }
 
     // 2️⃣ Check delivered order (BUSINESS RULE)
@@ -54,9 +50,7 @@ export const createReview = async (req: AuthRequest, res: Response) => {
     });
 
     if (!deliveredOrder) {
-      return res.status(403).json({
-        message: "You can review this product only after delivery",
-      });
+      return ApiResponse.error(res, "You can review this product only after delivery", null, 403);
     }
 
     // 3️⃣ Create review
@@ -97,9 +91,11 @@ export const createReview = async (req: AuthRequest, res: Response) => {
 
     await recalculateProductRating(new mongoose.Types.ObjectId(productId));
 
+    return ApiResponse.success(res, "Review added successfully", { review }, 201);
+
   } catch (err) {
     console.error("createReview error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
@@ -108,7 +104,7 @@ export const getProductReviews = async (req: Request, res: Response) => {
     const { productId } = req.params;
 
     if (!mongoose.isValidObjectId(productId)) {
-      return res.status(400).json({ message: "Invalid productId" });
+      return ApiResponse.error(res, "Invalid productId", null, 400);
     }
 
     const reviews = await Review.find({ productId })
@@ -116,10 +112,10 @@ export const getProductReviews = async (req: Request, res: Response) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    return res.json({ reviews });
+    return ApiResponse.success(res, "Reviews retrieved successfully", { reviews });
   } catch (err) {
     console.error("getProductReviews error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 

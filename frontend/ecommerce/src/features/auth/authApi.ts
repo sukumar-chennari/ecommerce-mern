@@ -1,5 +1,7 @@
 import { api } from "../../app/api";
 
+import type { ApiResponse } from "../products/productApi";
+
 export const authApi = api.injectEndpoints({
   endpoints: (builder) => ({
     login: builder.mutation<{ user: any }, { email: string; password: string }>(
@@ -9,6 +11,7 @@ export const authApi = api.injectEndpoints({
           method: "POST",
           body,
         }),
+        transformResponse: (response: ApiResponse<{ user: any }>) => response.data,
         invalidatesTags: ["Auth"],
       }
     ),
@@ -23,6 +26,7 @@ export const authApi = api.injectEndpoints({
 
     getMe: builder.query<{ user: any }, void>({
       query: () => "/auth/me",
+      transformResponse: (response: ApiResponse<{ user: any }>) => response.data,
       providesTags: ["Auth"],
     }),
   }),

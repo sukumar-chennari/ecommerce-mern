@@ -3,6 +3,7 @@ import { z } from "zod";
 import Stripe from "stripe";
 import Order from "../models/Order.model";
 import dotenv from "dotenv";
+import { ApiResponse } from "../utils/response.util";
 
 dotenv.config();
 
@@ -20,19 +21,16 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
     const parsed = createCheckoutSessionSchema.safeParse(req.body);
 
     if (!parsed.success) {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: parsed.error.flatten(),
-      });
+      return ApiResponse.error(res, "Validation failed", parsed.error.flatten(), 400);
     }
 
     const { orderId } = parsed.data;
-    if (!orderId) return res.status(400).json({ message: "Missing orderId" });
+    if (!orderId) return ApiResponse.error(res, "Missing orderId", null, 400);
 
     const order = await Order.findById(orderId).lean();
-    if (!order) return res.status(404).json({ message: "Order not found" });
-    if (order.total === undefined) return res.status(400).json({ message: "Order total missing" });
-    if (order.status !== "pending") return res.status(400).json({ message: "Order is not pending" });
+    if (!order) return ApiResponse.error(res, "Order not found", null, 404);
+    if (order.total === undefined) return ApiResponse.error(res, "Order total missing", null, 400);
+    if (order.status !== "pending") return ApiResponse.error(res, "Order is not pending", null, 400);
 
     // build line items from order snapshot (amounts in cents)
     const line_items = order.items.map(item => ({
@@ -53,9 +51,9 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
       metadata: { orderId: order._id.toString() }, // critical: used by webhook
     });
 
-    return res.json({ url: session.url, id: session.id });
+    return ApiResponse.success(res, "Checkout session created", { url: session.url, id: session.id });
   } catch (err) {
     console.error("createCheckoutSession error:", err);
-    return res.status(500).json({ message: "Server error", error: err });
+    return ApiResponse.error(res, "Server error", err);
   }
 };

@@ -3,6 +3,7 @@ import { z } from "zod";
 import mongoose from "mongoose";
 import Cart from "../models/Cart.model";
 import Product from "../models/Product.model";
+import { ApiResponse } from "../utils/response.util";
 
 // typed request that includes userId from auth middleware
 interface AuthRequest extends Request {
@@ -25,7 +26,7 @@ export const getCart = async (req: AuthRequest, res: Response) => {
 
     // If no cart return empty
     if (!cart) {
-      return res.json({ items: [], subtotal: 0 });
+      return ApiResponse.success(res, "Cart retrieved", { items: [], subtotal: 0 });
     }
 
     // compute subtotal on server side
@@ -38,10 +39,10 @@ export const getCart = async (req: AuthRequest, res: Response) => {
       return { product, quantity: qty };
     });
 
-    return res.json({ items, subtotal });
+    return ApiResponse.success(res, "Cart retrieved", { items, subtotal });
   } catch (err) {
     console.error("getCart error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
@@ -61,24 +62,21 @@ export const addToCart = async (req: AuthRequest, res: Response) => {
 
     const parsed = addToCartSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: parsed.error.flatten(),
-      });
+      return ApiResponse.error(res, "Validation failed", parsed.error.flatten(), 400);
     }
 
     const { productId, quantity } = parsed.data;
 
     if (!mongoose.isValidObjectId(productId)) {
-      return res.status(400).json({ message: "Invalid productId" });
+      return ApiResponse.error(res, "Invalid productId", null, 400);
     }
     const qty = Math.max(1, Number(quantity));
 
     // verify product & stock
     const product = await Product.findById(productId).select("stock price name");
-    if (!product) return res.status(404).json({ message: "Product not found" });
+    if (!product) return ApiResponse.error(res, "Product not found", null, 404);
     if (product.stock < qty) {
-      return res.status(400).json({ message: "Insufficient stock" });
+      return ApiResponse.error(res, "Insufficient stock", null, 400);
     }
 
     // find or create cart
@@ -92,7 +90,7 @@ export const addToCart = async (req: AuthRequest, res: Response) => {
     if (existing) {
       const newQty = existing.quantity + qty;
       if (newQty > product.stock) {
-        return res.status(400).json({ message: `Only ${product.stock} items in stock` });
+        return ApiResponse.error(res, `Only ${product.stock} items in stock`, null, 400);
       }
       existing.quantity = newQty;
     } else {
@@ -100,10 +98,10 @@ export const addToCart = async (req: AuthRequest, res: Response) => {
     }
 
     await cart.save();
-    return res.status(200).json({ message: "Cart updated", cart });
+    return ApiResponse.success(res, "Cart updated", { cart });
   } catch (err) {
     console.error("addToCart error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
@@ -123,28 +121,25 @@ export const updateCartItem = async (req: AuthRequest, res: Response) => {
 
     const parsed = updateCartSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: parsed.error.flatten(),
-      });
+      return ApiResponse.error(res, "Validation failed", parsed.error.flatten(), 400);
     }
     const { quantity } = parsed.data;
 
     if (!mongoose.isValidObjectId(productId)) {
-      return res.status(400).json({ message: "Invalid productId" });
+      return ApiResponse.error(res, "Invalid productId", null, 400);
     }
     const qty = Number(quantity);
-    if (Number.isNaN(qty)) return res.status(400).json({ message: "Invalid quantity" });
+    if (Number.isNaN(qty)) return ApiResponse.error(res, "Invalid quantity", null, 400);
 
     const product = await Product.findById(productId).select("stock");
-    if (!product) return res.status(404).json({ message: "Product not found" });
-    if (qty > product.stock) return res.status(400).json({ message: "Insufficient stock" });
+    if (!product) return ApiResponse.error(res, "Product not found", null, 404);
+    if (qty > product.stock) return ApiResponse.error(res, "Insufficient stock", null, 400);
 
     const cart = await Cart.findOne({ userId });
-    if (!cart) return res.status(404).json({ message: "Cart not found" });
+    if (!cart) return ApiResponse.error(res, "Cart not found", null, 404);
 
     const itemIndex = cart.items.findIndex((i) => i.productId.equals(product._id));
-    if (itemIndex === -1) return res.status(404).json({ message: "Item not in cart" });
+    if (itemIndex === -1) return ApiResponse.error(res, "Item not in cart", null, 404);
 
     if (qty <= 0) {
       cart.items.splice(itemIndex, 1);
@@ -155,10 +150,10 @@ export const updateCartItem = async (req: AuthRequest, res: Response) => {
     }
 
     await cart.save();
-    return res.json({ message: "Cart updated", cart });
+    return ApiResponse.success(res, "Cart updated", { cart });
   } catch (err) {
     console.error("updateCartItem error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
@@ -172,18 +167,18 @@ export const removeCartItem = async (req: AuthRequest, res: Response) => {
     const { productId } = req.params;
 
     if (!mongoose.isValidObjectId(productId)) {
-      return res.status(400).json({ message: "Invalid productId" });
+      return ApiResponse.error(res, "Invalid productId", null, 400);
     }
 
     const cart = await Cart.findOne({ userId });
-    if (!cart) return res.status(404).json({ message: "Cart not found" });
+    if (!cart) return ApiResponse.error(res, "Cart not found", null, 404);
 
     cart.items = cart.items.filter((i) => !i.productId.equals(productId));
     await cart.save();
-    return res.json({ message: "Item removed", cart });
+    return ApiResponse.success(res, "Item removed", { cart });
   } catch (err) {
     console.error("removeCartItem error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
 
@@ -195,9 +190,9 @@ export const clearCart = async (req: AuthRequest, res: Response) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.userId!);
     await Cart.findOneAndDelete({ userId });
-    return res.json({ message: "Cart cleared" });
+    return ApiResponse.success(res, "Cart cleared");
   } catch (err) {
     console.error("clearCart error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return ApiResponse.error(res, "Server error", err);
   }
 };
