@@ -70,14 +70,14 @@ export const login = async (req: Request, res: Response) => {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      maxAge: 60 * 60 * 1000, // 1 hour
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: false, // set true in prod
       sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
     return ApiResponse.success(res, "Logged in", { user });

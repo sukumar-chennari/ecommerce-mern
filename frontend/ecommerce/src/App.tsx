@@ -1,7 +1,7 @@
 import { useGetMeQuery } from "./features/auth/authApi";
 import AppRoutes from "./routes/AppRoutes";
 import "./index.css";
-import AdminRoutes from "./pages/admin/routes/AdminRoutes";
+
 
 function App() {
   const { isLoading } = useGetMeQuery();
@@ -19,7 +19,6 @@ function App() {
 
   return <>
     <AppRoutes />
-    <AdminRoutes />
   </>
 }
 

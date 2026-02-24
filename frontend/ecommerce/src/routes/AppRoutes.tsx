@@ -1,7 +1,8 @@
 import { Routes, Route } from "react-router-dom";
 import Login from "../pages/Login";
 import ProtectedRoute from "../features/auth/ProtectedRoute";
-import AppLayout from "../layouts/AppLayout";
+
+import Home from "../pages/Home";
 import ProductsPage from "../pages/ProductsPage";
 import ProductDetailsPage from "../pages/ProductDetailsPage";
 import CartPage from "../pages/CartPage";
@@ -10,152 +11,56 @@ import CheckoutSuccess from "../pages/CheckoutSuccess";
 import CheckoutCancel from "../pages/CheckoutCancel";
 import MyOrdersPage from "../pages/MyOrdersPage";
 import OrderDetailsPage from "../pages/OrderDetailsPage";
-import AdminOrdersPage from "../pages/admin/pages/AdminOrdersPage";
-import AdminOrderDetailsPage from "../pages/admin/pages/AdminOrderDetailsPage";
 import WishlistPage from "../pages/WishlistPage";
 import OrderSuccessPage from "../pages/OrderSuccessPage";
-import Home from "../pages/Home";
+import MainLayout from "../layouts/MainLayout";
+import AdminProtectedRoute from "../pages/admin/AdminProtectedRoute";
+import AdminLayout from "../pages/admin/layout/AdminLayout";
+import AdminDashboard from "../pages/admin/pages/AdminDashboard";
+import AdminOrdersPage from "../pages/admin/pages/AdminOrdersPage";
+import AdminOrderDetailsPage from "../pages/admin/pages/AdminOrderDetailsPage";
 
 const AppRoutes = () => {
   return (
     <Routes>
+
+      {/* Public */}
       <Route path="/login" element={<Login />} />
 
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <AppLayout>
-              <Home />
-              {/* <ProductsPage /> */}
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
+      {/* Protected */}
+      <Route element={<ProtectedRoute />}>
 
-      <Route
-        path="/products"
-        element={
-          <ProtectedRoute>
-            <AppLayout>
-              <ProductsPage />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
+        {/* Layout */}
+        <Route element={<MainLayout />}>
 
-      <Route
-        path="/products/:slug"
-        element={
-          <ProtectedRoute>
-            <AppLayout>
-              <ProductDetailsPage />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
+          <Route index element={<Home />} />
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="products/:slug" element={<ProductDetailsPage />} />
+          <Route path="cart" element={<CartPage />} />
+          <Route path="checkout" element={<CheckoutPage />} />
+          <Route path="orders" element={<MyOrdersPage />} />
+          <Route path="orders/:id" element={<OrderDetailsPage />} />
+          <Route path="wishlist" element={<WishlistPage />} />
 
-      <Route
-        path="/cart"
-        element={
-          <ProtectedRoute>
-            <AppLayout>
-              <CartPage />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
+        </Route>
 
-      <Route
-        path="/checkout"
-        element={
-          <ProtectedRoute>
-            <AppLayout>
-              <CheckoutPage />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/checkout/success"
-        element={
-          <ProtectedRoute>
-            <CheckoutSuccess />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/checkout/cancel"
-        element={
-          <ProtectedRoute>
-            <CheckoutCancel />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/orders"
-        element={
-          <ProtectedRoute>
-            <AppLayout>
-              <MyOrdersPage />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/orders/:id"
-        element={
-          <ProtectedRoute>
-            <AppLayout>
-              <OrderDetailsPage />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      {/* <Route
-        path="/admin/orders"
-        element={
-          <ProtectedRoute adminOnly>
-            <AdminOrdersPage />
-          </ProtectedRoute>
-        }
-      /> */}
-
-      {/* <Route
-        path="/admin/orders/:id"
-        element={
-          <ProtectedRoute adminOnly>
-            <AdminOrderDetailsPage />
-          </ProtectedRoute>
-        }
-      /> */}
-
-      <Route
-        path="/wishlist"
-        element={
-          <ProtectedRoute>
-            <AppLayout>
-              <WishlistPage />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      >
+        {/* Standalone but still protected */}
+        <Route path="/checkout/success" element={<CheckoutSuccess />} />
+        <Route path="/checkout/cancel" element={<CheckoutCancel />} />
 
       </Route>
 
-      <Route
-        path="/checkout/success"
-        element={
-          <ProtectedRoute>
-            <OrderSuccessPage />
-          </ProtectedRoute>
-        }
-      />
 
+      {/* Admin Area */}
+      <Route element={<AdminProtectedRoute />}>
+
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="orders" element={<AdminOrdersPage />} />
+          <Route path="orders/:id" element={<AdminOrderDetailsPage />} />
+        </Route>
+
+      </Route>
     </Routes>
   );
 };

@@ -1,35 +1,62 @@
-import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Outlet, NavLink } from "react-router-dom";
 
-interface Props {
-    children: ReactNode;
-}
-
-const AdminLayout = ({ children }: Props) => {
+const AdminLayout = () => {
     return (
         <div className="min-h-screen flex bg-background">
+
             {/* Sidebar */}
-            <aside className="w-64 bg-secondary text-white p-6">
-                <h2 className="text-xl font-bold mb-6">Admin Panel</h2>
+            <aside className="w-64 bg-secondary text-white p-6 flex flex-col">
+                <h2 className="text-xl font-bold mb-8">Admin Panel</h2>
 
                 <nav className="space-y-3">
-                    <Link to="/admin" className="block hover:text-accent">
+                    <NavLink
+                        to="/admin"
+                        end
+                        className={({ isActive }) =>
+                            `block px-3 py-2 rounded-lg transition ${isActive ? "bg-accent text-black" : "hover:bg-white/10"
+                            }`
+                        }
+                    >
                         Dashboard
-                    </Link>
-                    <Link to="/admin/orders" className="block hover:text-accent">
+                    </NavLink>
+
+                    <NavLink
+                        to="/admin/orders"
+                        className={({ isActive }) =>
+                            `block px-3 py-2 rounded-lg transition ${isActive ? "bg-accent text-black" : "hover:bg-white/10"
+                            }`
+                        }
+                    >
                         Orders
-                    </Link>
-                    <Link to="/admin/products" className="block hover:text-accent">
+                    </NavLink>
+
+                    <NavLink
+                        to="/admin/products"
+                        className={({ isActive }) =>
+                            `block px-3 py-2 rounded-lg transition ${isActive ? "bg-accent text-black" : "hover:bg-white/10"
+                            }`
+                        }
+                    >
                         Products
-                    </Link>
-                    <Link to="/admin/analytics" className="block hover:text-accent">
+                    </NavLink>
+
+                    <NavLink
+                        to="/admin/analytics"
+                        className={({ isActive }) =>
+                            `block px-3 py-2 rounded-lg transition ${isActive ? "bg-accent text-black" : "hover:bg-white/10"
+                            }`
+                        }
+                    >
                         Analytics
-                    </Link>
+                    </NavLink>
                 </nav>
             </aside>
 
-            {/* Main content */}
-            <main className="flex-1 p-8">{children}</main>
+            {/* Main Content */}
+            <main className="flex-1 p-10">
+                <Outlet />
+            </main>
+
         </div>
     );
 };
