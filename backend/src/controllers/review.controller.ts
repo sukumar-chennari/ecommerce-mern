@@ -112,7 +112,29 @@ export const getProductReviews = async (req: Request, res: Response) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    return ApiResponse.success(res, "Reviews retrieved successfully", { reviews });
+    const stats = await Review.aggregate([
+      { $match: { productId: new mongoose.Types.ObjectId(productId) } },
+      {
+        $group: {
+          _id: "$rating",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const breakdown: Record<number, number> = {
+      5: 0,
+      4: 0,
+      3: 0,
+      2: 0,
+      1: 0,
+    };
+
+    stats.forEach((s) => {
+      breakdown[s._id] = s.count;
+    });
+
+    return ApiResponse.success(res, "Reviews retrieved successfully", { reviews, breakdown });
   } catch (err) {
     console.error("getProductReviews error:", err);
     return ApiResponse.error(res, "Server error", err);

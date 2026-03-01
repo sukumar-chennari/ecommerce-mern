@@ -10,8 +10,11 @@ export interface Product {
   description?: string;
   stock: number;
   averageRating?: number;
-
+  createdAt: string;
   reviewCount?: number;
+  totalProducts?: number;
+  category?: string;
+  brand?: string;
 }
 
 export interface ApiResponse<T> {
@@ -36,6 +39,10 @@ export const productApi = api.injectEndpoints({
         brand?: string;
         minPrice?: number;
         maxPrice?: number;
+        sort?: string;
+        search?: string;
+        limit?: number;
+
       }
     >({
       query: (params) => {
@@ -49,6 +56,7 @@ export const productApi = api.injectEndpoints({
         if (params.brand) queryParams.set("brand", params.brand);
         if (params.minPrice) queryParams.set("minPrice", params.minPrice.toString());
         if (params.maxPrice) queryParams.set("maxPrice", params.maxPrice.toString());
+        if (params.search) queryParams.set("search", params.search);
 
         return `/products?${queryParams.toString()}`;
       },

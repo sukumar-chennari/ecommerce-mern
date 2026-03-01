@@ -17,11 +17,11 @@ export const reviewApi = api.injectEndpoints({
             invalidatesTags: ["Product"],
         }),
         getProductReviews: builder.query<
-            { reviews: any[] },
+            { reviews: any[]; breakdown: Record<number, number> },
             string
         >({
             query: (productId) => `/reviews/product/${productId}`,
-            transformResponse: (response: ApiResponse<{ reviews: any[] }>) => response.data,
+            transformResponse: (response: ApiResponse<{ reviews: any[]; breakdown: Record<number, number> }>) => response.data,
         }),
     }),
 });

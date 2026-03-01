@@ -114,6 +114,8 @@ export const getAllProducts = async (req: Request, res: Response) => {
     if (sort === "price_asc") sortObj = { price: 1 };
     else if (sort === "price_desc") sortObj = { price: -1 };
     else if (sort === "oldest") sortObj = { createdAt: 1 };
+    else if (sort === "rating_desc") sortObj = { averageRating: -1 };
+    else if (sort === "rating_asc") sortObj = { averageRating: 1 };
     // you can add more sorts (rating, popularity) later
 
     // Execute queries: total count + page items
