@@ -16,8 +16,17 @@ interface MulterRequest extends Request {
   files?: Express.Multer.File[];
 }
 
+export const getProducts = async (req: Request, res: Response) => {
+  try {
+    const products = await Product.find();
+    return ApiResponse.success(res, "Products fetched", { products });
+  } catch (err) {
+    console.error("getProducts error:", err);
+    return ApiResponse.error(res, "Server error", err);
+  }
+};
+
 export const createProduct = async (req: Request, res: Response) => {
-  console.log("createProduct req.body:", req.body);
   try {
     // Zod Schema for Create Product
     const createProductSchema = z.object({
@@ -57,7 +66,6 @@ export const createProduct = async (req: Request, res: Response) => {
       stock,
       images,
     });
-    console.log("createProduct images:", images);
     return ApiResponse.success(res, "Product created", { product }, 201);
   } catch (err) {
     console.error("createProduct error:", err);

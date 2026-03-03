@@ -12,13 +12,15 @@ import CheckoutCancel from "../pages/CheckoutCancel";
 import MyOrdersPage from "../pages/MyOrdersPage";
 import OrderDetailsPage from "../pages/OrderDetailsPage";
 import WishlistPage from "../pages/WishlistPage";
-import OrderSuccessPage from "../pages/OrderSuccessPage";
+// import OrderSuccessPage from "../pages/OrderSuccessPage";
 import MainLayout from "../layouts/MainLayout";
 import AdminProtectedRoute from "../pages/admin/AdminProtectedRoute";
 import AdminLayout from "../pages/admin/layout/AdminLayout";
 import AdminDashboard from "../pages/admin/pages/AdminDashboard";
 import AdminOrdersPage from "../pages/admin/pages/AdminOrdersPage";
 import AdminOrderDetailsPage from "../pages/admin/pages/AdminOrderDetailsPage";
+import AdminProductsPage from "../pages/admin/pages/AdminProductsPage";
+import AdminCreateProductPage from "../pages/admin/pages/AdminCreateProductPage";
 
 const AppRoutes = () => {
   return (
@@ -56,6 +58,11 @@ const AppRoutes = () => {
 
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
+          <Route path="products" element={<AdminProductsPage />} />
+          <Route path="products/create" element={<AdminCreateProductPage />} />
+          {/* <Route path="products/update/:id" element={<AdminUpdateProductPage />} /> */}
+          {/* <Route path="products/delete/:id" element={<AdminProductsPage />} /> */}
+
           <Route path="orders" element={<AdminOrdersPage />} />
           <Route path="orders/:id" element={<AdminOrderDetailsPage />} />
         </Route>

@@ -29,7 +29,11 @@ const Login = () => {
     try {
       const res = await login({ email, password }).unwrap();
       dispatch(setUser(res.user));
-      navigate("/");
+      if (res.user.role === "admin") {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
     } catch (err) {
       // handled via RTK Query error
       console.error("Login failed", err);

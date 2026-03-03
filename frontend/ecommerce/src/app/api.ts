@@ -5,6 +5,7 @@ export const api = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: "http://localhost:5000/api",
     credentials: "include", // 🔥 IMPORTANT (cookies)
+    timeout: 10000, // 10 seconds
   }),
   tagTypes: [
     "Auth",
