@@ -20,6 +20,7 @@ export const authApi = api.injectEndpoints({
       query: () => ({
         url: "/auth/logout",
         method: "POST",
+        credentials: "include",
       }),
       invalidatesTags: ["Auth"],
     }),

@@ -13,15 +13,15 @@ import type { RootState } from "../app/store";
 const Login = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const [login, { isLoading, error }] = useLoginMutation();
-
-  if (isAuthenticated) {
-    return <Navigate to="/" replace />;
-  }
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  if (isAuthenticated) {
+    return <Navigate to={user?.role === "admin" ? "/admin" : "/"} replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,8 +30,10 @@ const Login = () => {
       const res = await login({ email, password }).unwrap();
       dispatch(setUser(res.user));
       if (res.user.role === "admin") {
+        console.log("admin logged in");
         navigate("/admin");
       } else {
+        console.log("user logged in");
         navigate("/");
       }
     } catch (err) {

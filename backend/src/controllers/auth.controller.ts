@@ -71,6 +71,7 @@ export const login = async (req: Request, res: Response) => {
       secure: false,
       sameSite: "lax",
       maxAge: 60 * 60 * 1000, // 1 hour
+      path: "/",
     });
 
     res.cookie("refreshToken", refreshToken, {
@@ -78,6 +79,7 @@ export const login = async (req: Request, res: Response) => {
       secure: false, // set true in prod
       sameSite: "lax",
       maxAge: 24 * 60 * 60 * 1000, // 1 day
+      path: "/",
     });
 
     return ApiResponse.success(res, "Logged in", { user });
@@ -89,8 +91,18 @@ export const login = async (req: Request, res: Response) => {
 
 
 export const logout = (req: Request, res: Response) => {
-  res.clearCookie("accessToken");
-  res.clearCookie("refreshToken");
+  res.clearCookie("accessToken", {
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    path: "/",
+  });
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    path: "/",
+  });
 
   return ApiResponse.success(res, "Logged out");
 };

@@ -1,14 +1,25 @@
-import { useGetAdminProductsQuery } from "../../../features/admin/adminProductApi";
+import { useGetAdminProductsQuery, useDeleteProductMutation } from "../../../features/admin/adminProductApi";
 import { useNavigate } from "react-router-dom";
 
 const AdminProductsPage = () => {
     const { data, isLoading } = useGetAdminProductsQuery({})
+    const [deleteProduct] = useDeleteProductMutation();
     const navigate = useNavigate();
 
     if (isLoading) return <p>Loading...</p>;
 
     const handleClick = () => {
         navigate("/admin/products/create");
+    }
+
+    const handleDelete = (productId: string) => {
+        if (window.confirm("Are you sure?")) {
+            deleteProduct(productId);
+        }
+    }
+    const handleEdit = (productId: string) => {
+        navigate(`/admin/products/update/${productId}`);
+        console.log("product  info sending to update page is : ", data?.products.find((p: any) => p._id === productId));
     }
 
     return (
@@ -37,8 +48,8 @@ const AdminProductsPage = () => {
                             <td>₹{product.price}</td>
                             <td>{product.stock}</td>
                             <td className="space-x-2">
-                                <button className="text-blue-500">Edit</button>
-                                <button className="text-red-500">Delete</button>
+                                <button className="text-blue-500" onClick={() => handleEdit(product._id)}>Edit</button>
+                                <button className="text-red-500" onClick={() => handleDelete(product._id)}>Delete</button>
                             </td>
                         </tr>
                     ))}

@@ -4,15 +4,23 @@ import type { RootState } from "../../app/store";
 import { clearUser } from "../../features/auth/authSlice";
 import Button from "../ui/Button";
 import { useGetCartQuery } from "../../features/cart/cartApi";
+import { useLogoutMutation } from "../../features/auth/authApi";
 
 const Navbar = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
-
+  const [logoutApi] = useLogoutMutation();
   const navigate = useNavigate();
 
-  const logout = () => {
-    dispatch(clearUser());
+  const logoutHandler = async () => {
+    if (!confirm("Are you sure you want to logout?")) return;
+    try {
+      await logoutApi();
+      dispatch(clearUser());
+      navigate("/");
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
   };
 
   const { data: cart } = useGetCartQuery(undefined, {
@@ -57,7 +65,7 @@ const Navbar = () => {
               ❤️ ({data?.products.length || 0})
             </Link> */}
 
-            <Button variant="secondary" onClick={logout}>
+            <Button variant="secondary" onClick={logoutHandler}>
               Logout
             </Button>
           </>

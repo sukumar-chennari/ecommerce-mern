@@ -5,12 +5,11 @@ import { CloudinaryStorage } from "multer-storage-cloudinary";
 
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: async (req: any, file: any) => {
-    console.log("Middlewares Upload File to Cloudinary starting for:", file.originalname);
+  params: async (_req: any, file: any) => {
     return {
       folder: "ecommerce/products",
       allowed_formats: ["jpg", "png", "jpeg", "webp"],
-      public_id: `${Date.now()}-${file.originalname.split('.')[0]}`,
+      public_id: `${Date.now()}-${file.originalname.split(".")[0]}`,
     };
   },
 });

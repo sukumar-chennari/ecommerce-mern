@@ -25,7 +25,7 @@ export const adminProductApi = api.injectEndpoints({
                 body: data,
             }),
             transformResponse: (response: ApiResponse<{ product: any }>) => response.data,
-            invalidatesTags: ["Admin"],
+            invalidatesTags: ["Admin", "Product"],
         }),
 
         deleteProduct: builder.mutation({

@@ -1,10 +1,9 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
-import type { ReactNode } from "react";
 import { authApi } from "./authApi";
 
 interface User {
-  name: ReactNode;
+  name: string;
   _id: string;
   email: string;
   role: "user" | "admin";
@@ -35,10 +34,15 @@ const authSlice = createSlice({
       state.isLoading = false;
     },
     clearUser(state) {
+
+      console.log("clearing user", state);
       state.user = null;
       state.isAuthenticated = false;
       state.isInitialized = true;
       state.isLoading = false;
+
+      authApi.endpoints.logout.initiate();
+      console.log("cleared user", state);
     },
   },
   extraReducers: (builder) => {
