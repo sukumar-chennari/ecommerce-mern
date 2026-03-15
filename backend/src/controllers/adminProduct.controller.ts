@@ -66,9 +66,43 @@ const updateProductSchema = z.object({
 // GET /admin/products
 // ═══════════════════════════════════════════════════════════════════════
 export const getProducts = async (req: Request, res: Response) => {
+  console.log("getProducts query ", req.query);
   try {
-    const products = await Product.find();
-    return ApiResponse.success(res, "Products fetched", { products });
+    const { search, stock, category } = req.query;
+
+    const query: any = {};
+
+    if (search) {
+      query.name = { $regex: search, $options: "i" };
+    }
+
+    if (category) {
+      query.category = category;
+    }
+
+    if (stock === "out") {
+      query.stock = 0;
+    }
+
+    if (stock === "low") {
+      query.stock = { $lte: 5, $gt: 0 };
+    }
+
+    if (stock === "in") {
+      query.stock = { $gt: 5 };
+    }
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const products = await Product.find(query)
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
+
+    const total = await Product.countDocuments(query);
+
+    return ApiResponse.success(res, "Products fetched", { products, page, limit, total, totalPages: Math.ceil(total / limit) });
   } catch (err) {
     console.error("getProducts error:", err);
     return ApiResponse.error(res, "Server error", err);

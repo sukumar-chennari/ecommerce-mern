@@ -21,8 +21,9 @@ const CheckoutSuccess = () => {
     if (error || !data) {
         return <div className="p-6 text-red-500">Unable to load order</div>;
     }
+    console.log('data in checkoutSuccess page : ', data)
 
-    const order = data.order;
+    const order = data;
 
     return (
         <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -44,12 +45,37 @@ const CheckoutSuccess = () => {
                     </div>
                 ))}
 
+                <div className="flex justify-between font-semibold">
+                    <span>Tax</span>
+                    <span>₹{order.tax}</span>
+                </div>
+
+                <div className="flex justify-between font-semibold">
+                    <span>Shipping</span>
+                    <span>₹{order.shipping}</span>
+                </div>
+
+                <div className="flex justify-between font-semibold">
+                    <span>Shipping Address</span>
+                    <span>{order.shippingAddress.name}</span>
+                    <span>{order.shippingAddress.addressLine1}</span>
+                    <span>{order.shippingAddress.city}</span>
+                    <span>{order.shippingAddress.state}</span>
+                    <span>{order.shippingAddress.postalCode}</span>
+                    <span>{order.shippingAddress.country}</span>
+                </div>
+                <div className="flex justify-between font-semibold">
+                    <span>Order Status</span>
+                    <span>{order.status}</span>
+                </div>
                 <hr />
+
 
                 <div className="flex justify-between font-semibold">
                     <span>Total</span>
                     <span>₹{order.total}</span>
                 </div>
+
             </div>
 
             <div className="flex gap-4">

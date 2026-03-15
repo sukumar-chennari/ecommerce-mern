@@ -4,7 +4,7 @@ import Stripe from "stripe";
 import Order from "../models/Order.model";
 import dotenv from "dotenv";
 import { ApiResponse } from "../utils/response.util";
-
+import mongoose from "mongoose";
 dotenv.config();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
@@ -13,7 +13,11 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
 
 // Create Checkout session (frontend will redirect to session.url)
 export const createCheckoutSession = async (req: Request, res: Response) => {
+
   try {
+    const userId = (req as any).userId;
+
+
     const createCheckoutSessionSchema = z.object({
       orderId: z.string().min(1, "Order ID is required"),
     });
@@ -25,31 +29,73 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
     }
 
     const { orderId } = parsed.data;
-    if (!orderId) return ApiResponse.error(res, "Missing orderId", null, 400);
-
+    if (!mongoose.isValidObjectId(orderId)) {
+      return ApiResponse.error(res, "Invalid orderId", null, 400);
+    }
     const order = await Order.findById(orderId).lean();
-    if (!order) return ApiResponse.error(res, "Order not found", null, 404);
-    if (order.total === undefined) return ApiResponse.error(res, "Order total missing", null, 400);
-    if (order.status !== "pending") return ApiResponse.error(res, "Order is not pending", null, 400);
 
+    if (!order) {
+      return ApiResponse.error(res, "Order not found", null, 404);
+    }
+
+    if (order.userId.toString() !== userId) {
+      return ApiResponse.error(res, "Unauthorized", null, 403);
+    }
+
+    if (order.items.length === 0 || order.total === undefined || order.status !== "pending" || order.total <= 0) {
+      return ApiResponse.error(res, "Invalid order state", null, 400);
+    }
     // build line items from order snapshot (amounts in cents)
     const line_items = order.items.map(item => ({
       price_data: {
         currency: "inr", // change to your currency
-        product_data: { name: item.name, metadata: { productId: item.productId.toString() } },
+        product_data: {
+          name: item.name,
+          metadata: {
+            productId: item.productId.toString(),
+            orderId: order._id.toString()
+          }
+        },
         unit_amount: Math.round(item.price * 100),
       },
       quantity: item.quantity,
     }));
 
+    const shippingItem = {
+      price_data: {
+        currency: "inr",
+        product_data: {
+          name: "Shipping",
+          metadata: { orderId: order._id.toString() }
+        },
+        unit_amount: Math.round(order.shipping * 100),
+      },
+      quantity: 1,
+    };
+
+    const taxItem = {
+      price_data: {
+        currency: "inr",
+        product_data: {
+          name: "Tax",
+          metadata: { orderId: order._id.toString() }
+        },
+        unit_amount: Math.round(order.tax * 100),
+      },
+      quantity: 1,
+    };
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
-      line_items,
+      line_items: [...line_items, shippingItem, taxItem],
       success_url: `${process.env.CLIENT_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.CLIENT_URL}/checkout/cancel`,
       metadata: { orderId: order._id.toString() }, // critical: used by webhook
-    });
+    },
+      {
+        idempotencyKey: order._id.toString(),
+      });
 
     return ApiResponse.success(res, "Checkout session created", { url: session.url, id: session.id });
   } catch (err) {

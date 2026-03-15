@@ -22,25 +22,20 @@ const CartPage = () => {
         );
     }
 
-    const subtotal = data.items.reduce(
-        (sum: number, item: any) =>
-            sum + item.product.price * item.quantity,
-        0
-    );
-
     return (
         <div className="p-6 max-w-3xl">
+
             <h1 className="text-2xl font-bold mb-6">Your Cart</h1>
 
             <div className="space-y-4">
                 {data.items.map((item: any) => (
                     <div
-                        key={item.product._id}
+                        key={item.product?._id}
                         className="flex justify-between items-center border p-4 rounded-xl"
                     >
                         <div>
-                            <p className="font-medium">{item.product.name}</p>
-                            <p className="text-sm text-gray-500">₹{item.product.price}</p>
+                            <p className="font-medium">{item.product?.name}</p>
+                            <p className="text-sm text-gray-500">₹{item.product?.price}</p>
                         </div>
 
                         {/* Quantity controls */}
@@ -87,7 +82,7 @@ const CartPage = () => {
             {/* Subtotal */}
             <div className="mt-8 flex justify-between font-semibold text-lg">
                 <span>Subtotal</span>
-                <span>₹{subtotal}</span>
+                <span>₹{data?.subtotal}</span>
             </div>
 
             <Link to="/checkout">

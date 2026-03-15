@@ -10,9 +10,11 @@ const allowedTransitions: Record<string, string[]> = {
   pending: ["paid"],
 };
 
+
 // List all orders
 export const adminListOrders = async (req: Request, res: Response) => {
   const orders = await Order.find()
+    .populate("userId", "name email")
     .sort({ createdAt: -1 })
     .lean();
 

@@ -3,9 +3,41 @@ import type { ApiResponse } from "../products/productApi";
 
 export const adminProductApi = api.injectEndpoints({
     endpoints: (builder) => ({
-        getAdminProducts: builder.query({
-            query: () => "/admin/products",
-            transformResponse: (response: ApiResponse<{ products: any[] }>) => response.data,
+        getAdminProducts: builder.query<
+            {
+                products: any[];
+                total: number;
+                page: number;
+                totalPages: number;
+                limit: number;
+            },
+            {
+                search?: string;
+                stock?: string;
+                category?: string;
+                page?: number;
+                limit?: number;
+            }
+        >({
+            query: ({ search, stock, category, page, limit }) => {
+                const params = new URLSearchParams();
+
+                if (search) params.append("search", search);
+                if (stock) params.append("stock", stock);
+                if (category) params.append("category", category);
+                if (page) params.append("page", page.toString());
+                if (limit) params.append("limit", limit.toString());
+
+                return `/admin/products?${params.toString()}`;
+            },
+            transformResponse: (response: ApiResponse<{
+                products: any[];
+                total: number;
+                page: number;
+                totalPages: number;
+                limit: number;
+            }>) => response.data,
+            providesTags: ["Admin"],
         }),
 
         createProduct: builder.mutation({

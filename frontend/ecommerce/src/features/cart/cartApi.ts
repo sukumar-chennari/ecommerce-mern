@@ -19,6 +19,7 @@ export interface Cart {
     totalPrice: number;
     createdAt: string;
     updatedAt: string;
+    subtotal: number;
 }
 
 import type { ApiResponse } from "../products/productApi";

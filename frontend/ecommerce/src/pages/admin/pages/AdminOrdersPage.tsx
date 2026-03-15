@@ -1,6 +1,13 @@
 import { Link } from "react-router-dom";
 import { useGetAdminOrdersQuery } from "../../../features/admin/adminOrderApi";
 
+const statusColor: any = {
+    pending: "bg-gray-200",
+    paid: "bg-yellow-200",
+    shipped: "bg-blue-200",
+    delivered: "bg-green-200",
+};
+
 const AdminOrdersPage = () => {
     const { data, isLoading } = useGetAdminOrdersQuery({});
 
@@ -15,6 +22,7 @@ const AdminOrdersPage = () => {
                     <tr className="bg-gray-100">
                         <th className="p-2">Order ID</th>
                         <th className="p-2">User</th>
+                        <th className="p-2">Date</th>
                         <th className="p-2">Total</th>
                         <th className="p-2">Status</th>
                     </tr>
@@ -31,9 +39,19 @@ const AdminOrdersPage = () => {
                                     {order._id}
                                 </Link>
                             </td>
-                            <td className="p-2">{order.userId}</td>
+                            <td className="p-2">{order.userId.name}</td>
+                            <td className="p-2">
+                                {new Date(order.createdAt).toLocaleDateString()}
+                            </td>
                             <td className="p-2">₹{order.total}</td>
-                            <td className="p-2 capitalize">{order.status}</td>
+                            <td className="p-2">
+                                <span
+                                    className={`px-2 py-1 rounded text-sm ${statusColor[order.status]
+                                        }`}
+                                >
+                                    {order.status}
+                                </span>
+                            </td>
                         </tr>
                     ))}
                 </tbody>

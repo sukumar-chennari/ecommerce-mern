@@ -35,6 +35,7 @@ const AdminOrderDetailsPage = () => {
                 <p><b>Order ID:</b> {order._id}</p>
                 <p><b>User:</b> {order.userId}</p>
                 <p><b>Status:</b> <span className="capitalize">{order.status}</span></p>
+                <p><b>Tax:</b> {order.tax}</p>
                 <p><b>Total:</b> ₹{order.total}</p>
             </div>
 
@@ -42,13 +43,15 @@ const AdminOrderDetailsPage = () => {
             <div className="bg-white shadow-soft p-4 rounded-xl">
                 <h2 className="font-semibold mb-2">Items</h2>
                 {order.items.map((item: any) => (
-                    <div
-                        key={item.productId}
-                        className="flex justify-between border-b py-2"
-                    >
-                        <span>
-                            {item.name} × {item.quantity}
-                        </span>
+                    <div className="flex items-center justify-between py-2 border-b">
+                        <div className="flex items-center gap-3">
+                            <img
+                                src={item.image}
+                                className="w-12 h-12 object-cover rounded"
+                            />
+                            <span>{item.name} × {item.quantity}</span>
+                        </div>
+
                         <span>₹{item.price * item.quantity}</span>
                     </div>
                 ))}
@@ -84,6 +87,16 @@ const AdminOrderDetailsPage = () => {
             </div>
 
 
+            {/* <div className="bg-white shadow-soft p-4 rounded-xl">
+                <h2 className="font-semibold mb-2">Shipping Address</h2>
+
+                <p>{order.shippingAddress.name}</p>
+                <p>{order.shippingAddress.address}</p>
+                <p>{order.shippingAddress.city}</p>
+                <p>{order.shippingAddress.postalCode}</p>
+            </div> */}
+            <p><b>Payment Method:</b> {order.payment.method}</p>
+            {/* <p><b>Payment Status:</b> {order.paymentStatus}</p> */}
             {nextStatusMap[order.status] && (
                 <button
                     className="mt-4 px-4 py-2 bg-primary text-white rounded"

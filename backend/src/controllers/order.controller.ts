@@ -13,6 +13,15 @@ interface AuthRequest extends Request {
 }
 
 
+
+interface OrderItemInput {
+  productId: mongoose.Types.ObjectId
+  name: string
+  price: number
+  quantity: number
+  image?: string
+}
+
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error("STRIPE_SECRET_KEY is missing in environment variables");
 }
@@ -33,18 +42,26 @@ export const createOrderFromCart = async (req: AuthRequest, res: Response) => {
     if (!userId) return ApiResponse.error(res, "Unauthorized", null, 401);
 
     // Load cart
-    const cart = await Cart.findOne({ userId }).lean();
-    if (!cart || !cart.items || cart.items.length === 0) {
+    const cart = await Cart.findOne({ userId })
+    if (!cart || cart.items.length === 0) {
       return ApiResponse.error(res, "Cart is empty", null, 400);
     }
 
     // Validate each product exists and has stock
     // We'll build orderItems array with snapshots
-    const orderItems: any[] = [];
+    const orderItems: OrderItemInput[] = []
+    const productIds = cart.items.map(i => i.productId);
+
+    const products = await Product.find({
+      _id: { $in: productIds }
+    }).select("name price stock images");
+
+    const productMap = new Map(
+      products.map(p => [p._id.toString(), p])
+    );
     for (const ci of cart.items) {
-      const product = await Product.findById(ci.productId).select(
-        "name price stock images"
-      );
+
+      const product = productMap.get(ci.productId.toString());
       if (!product) {
         return ApiResponse.error(res, `Product ${ci.productId} not found`, null, 404);
       }
@@ -57,7 +74,7 @@ export const createOrderFromCart = async (req: AuthRequest, res: Response) => {
         name: product.name,
         price: product.price,
         quantity: ci.quantity,
-        image: (product.images && product.images[0]) || null,
+        image: (product.images && product.images[0]),
       });
     }
 
@@ -74,14 +91,13 @@ export const createOrderFromCart = async (req: AuthRequest, res: Response) => {
 
     // Validate shipping address if present
     const shippingAddressSchema = z.object({
-      name: z.string().optional(),
-      addressLine1: z.string().optional(),
-      addressLine2: z.string().optional(),
-      city: z.string().optional(),
-      state: z.string().optional(),
-      postalCode: z.string().optional(),
-      country: z.string().optional(),
-    }).optional();
+      name: z.string().min(1),
+      addressLine1: z.string().min(1),
+      city: z.string().min(1),
+      state: z.string().min(1),
+      postalCode: z.string().min(1),
+      country: z.string().min(1),
+    })
 
     const parsed = shippingAddressSchema.safeParse(req.body.shippingAddress);
 
@@ -89,8 +105,9 @@ export const createOrderFromCart = async (req: AuthRequest, res: Response) => {
       return ApiResponse.error(res, "Invalid shipping address", parsed.error.flatten(), 400);
     }
 
-    const shippingAddress = parsed.data || undefined;
-
+    const estimate = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+    // const shippingAddress = parsed.data || undefined;
+    const shippingAddress = parsed.data
     // Create order document (status pending)
     const order = await Order.create({
       userId: new mongoose.Types.ObjectId(userId),
@@ -104,11 +121,14 @@ export const createOrderFromCart = async (req: AuthRequest, res: Response) => {
       statusTimeline: {
         orderedAt: new Date(),
       },
-      deliveryEstimate: "3–5 business days",
+      deliveryEstimate: estimate,
     });
 
+    cart.items = []
+    await cart.save()
+
     // Clear the cart (we delete the cart document to avoid leftover state)
-    await Cart.findOneAndDelete({ userId });
+    // await Cart.findOneAndDelete({ userId });
 
     return ApiResponse.success(res, "Order created", { order }, 201);
   } catch (err) {
@@ -200,7 +220,7 @@ export const getOrderById = async (req: AuthRequest, res: Response) => {
     if (!order) return ApiResponse.error(res, "Order not found", null, 404);
 
     const userId = req.userId;
-    const isAdmin = (req as any).isAdmin;
+    const isAdmin = (req as any).isAdmin ?? false;
 
     if (!isAdmin && order.userId.toString() !== userId) {
       return ApiResponse.error(res, "Not authorized", null, 403);

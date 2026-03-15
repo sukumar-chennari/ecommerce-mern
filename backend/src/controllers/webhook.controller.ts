@@ -19,9 +19,16 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET as string;
 
   let event: Stripe.Event;
+  if (!sig) {
+    return res.status(400).send("Missing signature")
+  }
+
   try {
     // req.body must be the raw body (Buffer). We'll attach route-level raw middleware.
     event = stripe.webhooks.constructEvent(req.body as Buffer, sig as string, webhookSecret);
+    if (event.type !== "checkout.session.completed") {
+      return res.status(200).send();
+    }
   } catch (err: any) {
     console.error("Webhook signature verification failed:", err?.message || err);
     return ApiResponse.error(res, `Webhook Error: ${err?.message || err}`, null, 400);
@@ -40,11 +47,9 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
   // We're interested in checkout.session.completed or payment_intent.succeeded
   if (eventType === "checkout.session.completed" || eventType === "payment_intent.succeeded") {
     // Derive orderId from metadata
-    const session = eventType === "checkout.session.completed" ? (event.data.object as Stripe.Checkout.Session) : null;
-    const paymentIntent = eventType === "payment_intent.succeeded" ? (event.data.object as Stripe.PaymentIntent) : null;
-
-    const orderId = session?.metadata?.orderId || paymentIntent?.metadata?.orderId;
-
+    const session = event.data.object as Stripe.Checkout.Session;
+    const orderId = session.metadata?.orderId;
+    stripePaymentIntentId: session.payment_intent as string | null;
     // Validate orderId is present and looks like a Mongo ID
     const metadataSchema = z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Order ID");
 
@@ -62,8 +67,20 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
       await mongoSession.withTransaction(async () => {
         // Re-load order inside transaction
         const order = await Order.findById(orderId).session(mongoSession);
-        if (!order) throw new Error("Order not found");
 
+        if (!order) throw new Error("Order not found");
+        if (session.amount_total !== order.total! * 100) {
+          throw new Error("Invalid order total");
+        }
+        if (!session.amount_total) {
+          throw new Error("Missing amount_total");
+        }
+        if (session.currency !== "inr") {
+          throw new Error("Invalid currency");
+        }
+        if (session.payment_status !== "paid") {
+          return
+        }
         // Idempotency guard: if order already paid, skip
         if (order.status === "paid") {
           // still record webhook event within transaction
@@ -90,9 +107,15 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
         order.statusTimeline.paidAt = new Date();
         order.payment = {
           method: "stripe",
-          stripePaymentIntentId: paymentIntent ? paymentIntent.id : (session?.payment_intent as string | undefined) || null,
+          stripePaymentIntentId: session.payment_intent as string | null,
           paidAt: new Date(),
-          raw: event,
+          raw: {
+            id: event.id,
+            type: event.type,
+            data: event.data.object,
+            created: event.created
+
+          },
         };
         await order.save({ session: mongoSession });
 

@@ -8,10 +8,10 @@ export const stripeApi = api.injectEndpoints({
             { url: string; id: string },
             { orderId: string }
         >({
-            query: (orderId) => ({
+            query: ({ orderId }) => ({
                 url: "/stripe/create-session",
                 method: "POST",
-                body: orderId,
+                body: { orderId },
             }),
             transformResponse: (response: ApiResponse<{ url: string; id: string }>) => response.data,
         }),

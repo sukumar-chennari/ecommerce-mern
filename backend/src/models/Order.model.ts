@@ -9,6 +9,7 @@ export interface IOrderItem {
   // any other snapshot fields: variant, sku, etc.
 }
 
+
 export interface IOrder extends Document {
   userId: mongoose.Types.ObjectId;
   items: IOrderItem[];
@@ -17,7 +18,7 @@ export interface IOrder extends Document {
   tax: number;
   total: number;
 
-  status: "pending" | "paid" | "cancelled" | "failed" | "refunded"| "shipped" | "delivered";
+  status: "pending" | "paid" | "cancelled" | "failed" | "refunded" | "shipped" | "delivered";
 
   shippingAddress?: {
     name?: string;
@@ -49,12 +50,12 @@ export interface IOrder extends Document {
   };
 
   tracking?: {
-  carrier?: string;
-  trackingNumber?: string;
-  trackingUrl?: string;
-};
+    carrier?: string;
+    trackingNumber?: string;
+    trackingUrl?: string;
+  };
 
-  deliveryEstimate?: string;
+  deliveryEstimate?: Date;
 
   createdAt: Date;
   updatedAt: Date;
@@ -81,42 +82,45 @@ const OrderSchema = new Schema<IOrder>(
     total: { type: Number, required: true },
     status: {
       type: String,
-enum: [
-  "pending",
-  "paid",
-  "shipped",
-  "delivered",
-  "cancelled",
-  "failed",
-  "refunded",
-],
+      enum: [
+        "pending",
+        "paid",
+        "shipped",
+        "delivered",
+        "cancelled",
+        "failed",
+        "refunded",
+      ],
       default: "pending",
     },
     shippingAddress: {
-      name: String,
-      addressLine1: String,
-      addressLine2: String,
-      city: String,
-      state: String,
-      postalCode: String,
-      country: String,
+      name: { type: String, required: true },
+      addressLine1: { type: String, required: true },
+      addressLine2: { type: String },
+      city: { type: String, required: true },
+      state: { type: String, required: true },
+      postalCode: { type: String, required: true },
+      country: { type: String, required: true },
     },
     deliveredAt: { type: Date },
     shippedAt: { type: Date },
-    payment: { type: Schema.Types.Mixed },
-
+    payment: {
+      method: { type: String, default: "stripe" },
+      stripePaymentIntentId: String,
+      paidAt: Date
+    },
     tracking: {
-  carrier: String,
-  trackingNumber: String,
-  trackingUrl: String,
-},
+      carrier: String,
+      trackingNumber: String,
+      trackingUrl: String,
+    },
     statusTimeline: {
-    orderedAt: { type: Date },
-    paidAt: { type: Date },
-    shippedAt: { type: Date },
-    deliveredAt: { type: Date },
-  },
-  deliveryEstimate: { type: String },
+      orderedAt: { type: Date },
+      paidAt: { type: Date },
+      shippedAt: { type: Date },
+      deliveredAt: { type: Date },
+    },
+    deliveryEstimate: Date,
   },
   { timestamps: true }
 );
