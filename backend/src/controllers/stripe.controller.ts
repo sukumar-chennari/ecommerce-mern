@@ -89,6 +89,9 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
       payment_method_types: ["card"],
       mode: "payment",
       line_items: [...line_items, shippingItem, taxItem],
+      // ✅ ADD THIS
+      expand: ["payment_intent"],
+
       success_url: `${process.env.CLIENT_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.CLIENT_URL}/checkout/cancel`,
       metadata: { orderId: order._id.toString() }, // critical: used by webhook
@@ -101,5 +104,29 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("createCheckoutSession error:", err);
     return ApiResponse.error(res, "Server error", err);
+  }
+};
+
+// controllers/stripe.controller.ts
+
+export const verifyCheckoutSession = async (req: Request, res: Response) => {
+  try {
+    const sessionId = req.query.session_id as string;
+
+    if (!sessionId) {
+      return ApiResponse.error(res, "Missing session_id", null, 400);
+    }
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    if (session.payment_status !== "paid") {
+      return ApiResponse.error(res, "Payment not completed", null, 400);
+    }
+
+    return ApiResponse.success(res, "Payment verified", {
+      orderId: session.metadata?.orderId,
+    });
+  } catch (err) {
+    return ApiResponse.error(res, "Verification failed", err);
   }
 };

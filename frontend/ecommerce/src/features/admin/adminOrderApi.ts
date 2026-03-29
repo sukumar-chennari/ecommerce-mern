@@ -61,6 +61,15 @@ export const adminOrderApi = api.injectEndpoints({
                 response: ApiResponse<{ topProducts: any[] }>
             ) => response.data,
         }),
+        refundOrder: builder.mutation<
+            { refundId: string },
+            { orderId: string }
+        >({
+            query: ({ orderId }) => ({
+                url: `/admin/orders/${orderId}/refund`,
+                method: "POST",
+            }),
+        }),
     }),
 });
 
@@ -71,4 +80,5 @@ export const {
     useGetRevenueAnalyticsQuery,
     useGetOrderStatusAnalyticsQuery,
     useGetTopProductsQuery,
+    useRefundOrderMutation,
 } = adminOrderApi;

@@ -46,7 +46,7 @@ app.use(morgan("combined"))
 app.use(helmet());
 
 // Webhook endpoint must use raw body parser
-app.post("/webhook", express.raw({ type: "application/json" }), stripeWebhookHandler);
+app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), stripeWebhookHandler);
 
 
 app.use(
@@ -76,7 +76,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
-app.use("/api/stripe", authLimiter, stripeRoutes);
+app.use("/api/stripe", stripeRoutes);
 app.use("/api/reviews", authLimiter, reviewRoutes);
 app.use("/api/wishlist", authLimiter, wishlistRoutes);
 app.use("/api/admin/products", adminProductRoutes);

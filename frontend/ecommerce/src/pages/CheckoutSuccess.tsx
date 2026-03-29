@@ -1,25 +1,35 @@
 import { useSearchParams, Link } from "react-router-dom";
 import { useGetOrderByStripeSessionQuery } from "../features/orders/ordersApi";
+import { useVerifyCheckoutSessionQuery } from "../features/stripe/stripeApi";
 
 const CheckoutSuccess = () => {
     const [params] = useSearchParams();
     const sessionId = params.get("session_id");
 
-    const { data, isLoading, error } =
-        useGetOrderByStripeSessionQuery(sessionId!, {
+    const { data: verifyData, isLoading: verifying, isError, isSuccess } =
+        useVerifyCheckoutSessionQuery(sessionId!, {
             skip: !sessionId,
         });
+    const { data, isLoading, error } =
+        useGetOrderByStripeSessionQuery(sessionId!, {
+            skip: !verifyData?.orderId,
+        });
 
+    console.log('verifyData in checkoutSuccess page : ', verifyData)
+
+
+    if (verifying) {
+        return <div className="p-6">Verifying payment...</div>;
+    }
+
+    if (isError || !verifyData?.orderId) {
+        return <div className="p-6 text-red-500">Payment not confirmed ❌</div>;
+    }
     if (!sessionId) {
         return <div className="p-6 text-red-500">Invalid payment session</div>;
     }
-
-    if (isLoading) {
-        return <div className="p-6">Confirming your payment…</div>;
-    }
-
-    if (error || !data) {
-        return <div className="p-6 text-red-500">Unable to load order</div>;
+    if (isLoading || !data) {
+        return <div className="p-6">Finalizing your order...</div>;
     }
     console.log('data in checkoutSuccess page : ', data)
 

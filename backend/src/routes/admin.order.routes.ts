@@ -5,6 +5,7 @@ import {
     updateOrderStatus,
 } from "../controllers/adminOrder.controller";
 import { requireAuth, requireAdmin } from "../middlewares/auth.middleware";
+import { refundOrder } from "../controllers/refundOrder.controller";
 
 const router = express.Router();
 
@@ -17,4 +18,6 @@ router.get("/:id", requireAuth, requireAdmin, adminGetOrderById);
 // Update order status (pending → paid → shipped → delivered)
 router.patch("/:orderId/status", requireAuth, requireAdmin, updateOrderStatus);
 
+// Refund order
+router.post("/:orderId/refund", requireAuth, requireAdmin, refundOrder);
 export default router;

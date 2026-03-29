@@ -34,6 +34,8 @@ export interface IOrder extends Document {
     method?: string;
     stripePaymentIntentId?: string | null;
     paidAt?: Date | null;
+    refundId?: string | null;
+    refundedAt?: Date | null;
     raw?: any;
   };
 
@@ -47,8 +49,15 @@ export interface IOrder extends Document {
     paidAt?: Date;
     shippedAt?: Date;
     deliveredAt?: Date;
+    cancelledAt?: Date;
+    refundedAt?: Date;
   };
 
+  statusHistory: {
+    status: string;
+    updatedAt: Date;
+    updatedBy: mongoose.Types.ObjectId;
+  }[];
   tracking?: {
     carrier?: string;
     trackingNumber?: string;
@@ -114,11 +123,33 @@ const OrderSchema = new Schema<IOrder>(
       trackingNumber: String,
       trackingUrl: String,
     },
+
+    statusHistory: [
+      {
+        status: {
+          type: String,
+          enum: [
+            "pending",
+            "paid",
+            "shipped",
+            "delivered",
+            "cancelled",
+            "failed",
+            "refunded",
+          ],
+          required: true,
+        },
+        updatedAt: { type: Date, required: true },
+        updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
+      },
+    ],
     statusTimeline: {
       orderedAt: { type: Date },
       paidAt: { type: Date },
       shippedAt: { type: Date },
       deliveredAt: { type: Date },
+      cancelledAt: { type: Date },
+      refundedAt: { type: Date },
     },
     deliveryEstimate: Date,
   },

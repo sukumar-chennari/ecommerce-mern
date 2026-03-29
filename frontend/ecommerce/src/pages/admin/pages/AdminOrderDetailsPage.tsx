@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import {
     useGetAdminOrderByIdQuery,
+    useRefundOrderMutation,
     useUpdateOrderStatusMutation,
 } from "../../../features/admin/adminOrderApi";
 
@@ -16,6 +17,7 @@ const AdminOrderDetailsPage = () => {
 
     console.log('from admin order details page', id);
     const { data, isLoading, refetch } = useGetAdminOrderByIdQuery(id!)
+    const [refundOrder, { isLoading: refunding }] = useRefundOrderMutation();
     const [updateStatus, { isLoading: updating }] =
         useUpdateOrderStatusMutation();
 
@@ -33,7 +35,7 @@ const AdminOrderDetailsPage = () => {
             {/* Summary */}
             <div className="bg-white shadow-soft p-4 rounded-xl">
                 <p><b>Order ID:</b> {order._id}</p>
-                <p><b>User:</b> {order.userId}</p>
+                <p><b>User:</b> {order.userId.name} ({order.userId.email})</p>
                 <p><b>Status:</b> <span className="capitalize">{order.status}</span></p>
                 <p><b>Tax:</b> {order.tax}</p>
                 <p><b>Total:</b> ₹{order.total}</p>
@@ -43,7 +45,7 @@ const AdminOrderDetailsPage = () => {
             <div className="bg-white shadow-soft p-4 rounded-xl">
                 <h2 className="font-semibold mb-2">Items</h2>
                 {order.items.map((item: any) => (
-                    <div className="flex items-center justify-between py-2 border-b">
+                    <div key={item._id} className="flex items-center justify-between py-2 border-b">
                         <div className="flex items-center gap-3">
                             <img
                                 src={item.image}
@@ -58,57 +60,106 @@ const AdminOrderDetailsPage = () => {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-4">
+            <div className="flex gap-4 mt-4">
+
                 {order.status === "paid" && (
-                    <button
-                        disabled={updating}
-                        onClick={async () => {
-                            await updateStatus({ orderId: order._id, status: "shipped" });
-                            refetch();
-                        }}
-                        className="px-5 py-2 bg-blue-600 text-white rounded-xl"
-                    >
-                        Mark as Shipped
-                    </button>
+                    <>
+                        <button
+                            disabled={updating || refunding}
+                            onClick={async () => {
+                                try {
+                                    await updateStatus({
+                                        orderId: order._id,
+                                        status: "shipped",
+                                    }).unwrap();
+                                    refetch();
+                                } catch (err: any) {
+                                    alert(err?.data?.message || "Update failed");
+                                }
+                            }}
+                            className="px-5 py-2 bg-blue-600 text-white rounded-xl disabled:opacity-50"
+                        >
+                            {updating ? "Updating..." : "Mark as Shipped"}
+                        </button>
+
+                        <button
+                            disabled={refunding || updating}
+                            onClick={async () => {
+                                const confirmRefund = window.confirm(
+                                    "Are you sure you want to refund this order?"
+                                );
+
+                                if (!confirmRefund) return;
+
+                                try {
+                                    await refundOrder({ orderId: order._id }).unwrap();
+                                    alert("Refund successful");
+                                    refetch();
+                                } catch (err: any) {
+                                    alert(err?.data?.message || "Refund failed");
+                                }
+                            }}
+                            className="px-5 py-2 bg-red-600 text-white rounded-xl disabled:opacity-50"
+                        >
+                            {refunding ? "Processing..." : "Refund Order"}
+                        </button>
+                    </>
                 )}
 
                 {order.status === "shipped" && (
                     <button
                         disabled={updating}
                         onClick={async () => {
-                            await updateStatus({ orderId: order._id, status: "delivered" });
-                            refetch();
+                            try {
+                                await updateStatus({
+                                    orderId: order._id,
+                                    status: "delivered",
+                                }).unwrap();
+                                refetch();
+                            } catch (err: any) {
+                                alert(err?.data?.message || "Update failed");
+                            }
                         }}
-                        className="px-5 py-2 bg-green-600 text-white rounded-xl"
+                        className="px-5 py-2 bg-green-600 text-white rounded-xl disabled:opacity-50"
                     >
-                        Mark as Delivered
+                        {updating ? "Updating..." : "Mark as Delivered"}
                     </button>
                 )}
+
             </div>
 
-
-            {/* <div className="bg-white shadow-soft p-4 rounded-xl">
+            <div className="bg-white shadow-soft p-4 rounded-xl">
                 <h2 className="font-semibold mb-2">Shipping Address</h2>
 
                 <p>{order.shippingAddress.name}</p>
-                <p>{order.shippingAddress.address}</p>
+                <p>{order.shippingAddress.addressLine1}</p>
                 <p>{order.shippingAddress.city}</p>
                 <p>{order.shippingAddress.postalCode}</p>
-            </div> */}
+            </div>
             <p><b>Payment Method:</b> {order.payment.method}</p>
-            {/* <p><b>Payment Status:</b> {order.paymentStatus}</p> */}
-            {nextStatusMap[order.status] && (
+            <p><b>Payment Status:</b> {order.paymentStatus}</p>
+            {order.status === "paid" && (
                 <button
-                    className="mt-4 px-4 py-2 bg-primary text-white rounded"
+                    disabled={updating || refunding}
                     onClick={async () => {
-                        await updateStatus({
-                            orderId: order._id,
-                            status: nextStatusMap[order.status],
-                        });
-                        refetch();
+                        const confirmRefund = window.confirm(
+                            "Are you sure you want to refund this order?"
+                        );
+
+                        if (!confirmRefund) return;
+
+                        try {
+                            await refundOrder({ orderId: order._id }).unwrap();
+                            alert("Refund successful");
+                            refetch();
+                        } catch (err: any) {
+                            console.error(err);
+                            alert(err?.data?.message || "Refund failed");
+                        }
                     }}
+                    className="px-5 py-2 bg-red-600 text-white rounded-xl disabled:opacity-50"
                 >
-                    Mark as {nextStatusMap[order.status]}
+                    {refunding ? "Processing..." : "Refund Order"}
                 </button>
             )}
         </div>
