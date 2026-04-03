@@ -15,6 +15,7 @@ export const api = createApi({
     "Admin",
     "Analytics",
     "Wishlist",
+    "Notifications",
   ],
   endpoints: () => ({}),
 });

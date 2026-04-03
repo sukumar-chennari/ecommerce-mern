@@ -5,6 +5,7 @@ import { clearUser } from "../../features/auth/authSlice";
 import Button from "../ui/Button";
 import { useGetCartQuery } from "../../features/cart/cartApi";
 import { useLogoutMutation } from "../../features/auth/authApi";
+import NotificationBell from "../ui/NotificationBell";
 
 const Navbar = () => {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -57,10 +58,14 @@ const Navbar = () => {
               )}
             </Link>
 
+
             <Link to="/orders">
               <Button variant="secondary">My Orders</Button>
             </Link>
 
+            <div className="flex items-center gap-4">
+              <NotificationBell />
+            </div>
             {/* <Link to="/wishlist">
               ❤️ ({data?.products.length || 0})
             </Link> */}

@@ -8,6 +8,10 @@ import Order from "../models/Order.model";
 import Product from "../models/Product.model";
 import WebhookEvent from "../models/WebhookEvent.model";
 import { ApiResponse } from "../utils/response.util";
+import { sendEmail } from "../services/email.service";
+import User from "../models/User.model";
+import NotificationModel from "../models/Notification.model";
+
 
 dotenv.config();
 
@@ -17,6 +21,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
 
 export const stripeWebhookHandler = async (req: Request, res: Response) => {
   const sig = req.headers["stripe-signature"] as string | undefined;
+  let userEmail: string | undefined;
+  let emailSent: boolean = false;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET as string;
 
   if (!sig) {
@@ -50,8 +56,10 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
       ? session.payment_intent
       : session.payment_intent?.id;
   console.log("paymentIntentId", paymentIntentId);
+
   if (!paymentIntentId) {
-    throw new Error("Missing payment_intent from Stripe session");
+    console.error("Missing payment intent");
+    return res.status(200).send();
   }
   // Prevent duplicate processing
   const existing = await WebhookEvent.findOne({ eventId }).lean();
@@ -167,7 +175,27 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
         },
       };
 
+
       await order.save({ session: mongoSession });
+
+      const user = await User.findById(order.userId).session(mongoSession);
+      userEmail = user?.email;
+
+
+      try {
+        await sendEmail(
+          user?.email!,
+          "Order Confirmed 🎉",
+          `
+      <h2>Order Confirmed</h2>
+      <p>Order ID: ${order._id}</p>
+      <p>Total: ₹${order.total}</p>
+      <p>Status: ${order.status}</p>
+    `
+        );
+      } catch (err) {
+        console.error("Email failed:", err);
+      }
 
       await WebhookEvent.create(
         [
@@ -181,6 +209,54 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
       );
     });
 
+    if (userEmail && !emailSent) {
+      try {
+        await sendEmail(
+          userEmail,
+          "Order Confirmed 🎉",
+          `<h2>Order Confirmed</h2>
+     <p>Order ID: ${orderId}</p>
+     <p>Total: ₹${session.amount_total}</p>`
+        )
+        await Order.findByIdAndUpdate(orderId, {
+          emailSent: true,
+        }
+        ).catch(err => console.error("Email failed:", err));
+      } catch (err) {
+        console.error("Email failed:", err);
+      }
+    }
+
+    const admins = await User.find({ role: "admin" }).select("email");
+    await Promise.all(
+      admins.map(async (admin) => {
+        await sendEmail(
+          admin.email,
+          "Order Confirmed 🎉",
+          `<h2>Order Confirmed</h2>
+     <p>Order ID: ${orderId}</p>
+     <p>Total: ₹${session.amount_total}</p>`
+        )
+      })
+    ).catch(err => console.error("Email failed:", err));
+
+    await NotificationModel.create({
+      userId: session.metadata?.userId,
+      type: "order_paid",
+      title: "Payment Successful",
+      message: `Your order ${orderId} has been confirmed`,
+    });
+
+
+
+    for (const admin of admins) {
+      await NotificationModel.create({
+        userId: admin._id,
+        type: "order_paid",
+        title: "New Order Paid",
+        message: `Order ${orderId} was paid`,
+      });
+    }
     return res.status(200).send();
   } catch (err: any) {
     console.error("Webhook transaction failed:", err.message);

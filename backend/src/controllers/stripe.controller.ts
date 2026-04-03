@@ -53,7 +53,8 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
           name: item.name,
           metadata: {
             productId: item.productId.toString(),
-            orderId: order._id.toString()
+            orderId: order._id.toString(),
+            userId: userId.toString()
           }
         },
         unit_amount: Math.round(item.price * 100),
@@ -94,7 +95,10 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
 
       success_url: `${process.env.CLIENT_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.CLIENT_URL}/checkout/cancel`,
-      metadata: { orderId: order._id.toString() }, // critical: used by webhook
+      metadata: {
+        orderId: order._id.toString(),
+        userId: userId.toString()
+      }, // critical: used by webhook
     },
       {
         idempotencyKey: order._id.toString(),
@@ -112,21 +116,54 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
 export const verifyCheckoutSession = async (req: Request, res: Response) => {
   try {
     const sessionId = req.query.session_id as string;
+    const userId = (req as any).userId;
+
 
     if (!sessionId) {
-      return ApiResponse.error(res, "Missing session_id", null, 400);
+      return ApiResponse.error(res, "Missing session_id");
     }
 
+    // 🔥 ALWAYS fetch from Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
+    if (!session) {
+      return ApiResponse.error(res, "Session not found");
+    }
+
+    // 🔥 Check payment
     if (session.payment_status !== "paid") {
-      return ApiResponse.error(res, "Payment not completed", null, 400);
+      return ApiResponse.error(res, "Payment not completed");
+    }
+
+    const metadata = session.metadata;
+
+    const order = await Order.findById(metadata?.orderId);
+    if (order?.status !== "paid") {
+      return ApiResponse.success(res, "Waiting for webhook", {
+        success: false,
+        orderId: order?._id,
+      });
+    }
+
+
+    console.log("metadata", metadata);
+    if (!metadata?.orderId || !metadata?.userId) {
+      return ApiResponse.error(res, "Invalid session metadata");
+    }
+
+
+    // 🔥 CRITICAL CHECK
+    if (metadata.userId !== userId) {
+      return ApiResponse.error(res, "Unauthorized access", null, 403);
     }
 
     return ApiResponse.success(res, "Payment verified", {
-      orderId: session.metadata?.orderId,
+      orderId: metadata.orderId,
+      success: true,
     });
+
   } catch (err) {
-    return ApiResponse.error(res, "Verification failed", err);
+    console.error(err);
+    return ApiResponse.error(res, "Verification failed");
   }
 };

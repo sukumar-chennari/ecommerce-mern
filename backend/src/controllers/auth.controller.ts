@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { z } from "zod";
+import { success, z } from "zod";
 import User from "../models/User.model";
 import { ApiResponse } from "../utils/response.util";
 import { hashPassword, comparePassword } from "../services/auth.service";
@@ -35,7 +35,14 @@ export const register = async (req: Request, res: Response) => {
       password: hashed,
     });
 
-    return ApiResponse.success(res, "User registered", { user: newUser }, 201);
+    const userResponse = {
+      _id: newUser._id,
+      name: newUser.name,
+      email: newUser.email,
+    };
+
+
+    return ApiResponse.success(res, "User registered", { user: userResponse }, 201);
   } catch (err) {
     return ApiResponse.error(res, "Server error", err);
   }
@@ -84,7 +91,7 @@ export const login = async (req: Request, res: Response) => {
 
     return ApiResponse.success(res, "Logged in", { user });
   } catch (err) {
-    console.error('error', err);
+    console.error('error in login', err);
     return ApiResponse.error(res, "Server error", err);
   }
 };
@@ -119,13 +126,14 @@ export const refreshToken = (req: Request, res: Response) => {
 
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 15 * 60 * 1000,
     });
 
-    return ApiResponse.success(res, "Token refreshed");
-  } catch {
+    return ApiResponse.success(res, "Token refreshed", { success: true });
+  } catch (err) {
+    console.error('error in refresh token', err);
     return ApiResponse.error(res, "Invalid refresh token", null, 401);
   }
 };

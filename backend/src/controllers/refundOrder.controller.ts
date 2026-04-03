@@ -4,6 +4,8 @@ import { ApiResponse } from "../utils/response.util";
 import mongoose from "mongoose";
 import Order from "../models/Order.model";
 import { Request, Response } from "express";
+import User from "../models/User.model";
+import { sendEmail } from "../services/email.service";
 dotenv.config();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
@@ -82,6 +84,22 @@ export const refundOrder = async (req: Request, res: Response) => {
             await dbOrder.save({ session });
         });
 
+        const user = await User.findById(order.userId);
+
+        try {
+            await sendEmail(
+                user?.email!,
+                "Order Refunded 🎉",
+                `
+      <h2>Order Refunded</h2>
+      <p>Order ID: ${order._id}</p>
+      <p>Total: ₹${order.total}</p>
+      <p>Status: ${order.status}</p>
+    `
+            );
+        } catch (err) {
+            console.error("Email failed:", err);
+        }
         session.endSession();
 
         return ApiResponse.success(res, "Order refunded successfully", {

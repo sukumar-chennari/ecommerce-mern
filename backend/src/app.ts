@@ -21,6 +21,8 @@ import wishlistRoutes from "./routes/wishlist.routes";
 import adminProductRoutes from "./routes/admin.product.routes";
 import adminAnalyticsRoutes from "./routes/admin.analytics.routes";
 import adminOrderRoutes from "./routes/admin.order.routes";
+import notificationRoutes from "./routes/notifications.routes";
+import { sendEmail } from "./services/email.service";
 dotenv.config();
 
 
@@ -70,7 +72,15 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({ status: "OK" });
 });
+app.get("/test-email", async (req, res) => {
+  await sendEmail(
+    "chennarisukumar@gmail.com",
+    "Test Email",
+    "<h1>It works 🎉</h1>"
+  );
 
+  res.send("Email sent");
+});
 // app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
@@ -81,9 +91,11 @@ app.use("/api/reviews", authLimiter, reviewRoutes);
 app.use("/api/wishlist", authLimiter, wishlistRoutes);
 app.use("/api/admin/products", adminProductRoutes);
 app.use("/api/admin/orders", adminOrderRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 
 app.use("/api/admin/analytics", authLimiter, adminAnalyticsRoutes);
+
 
 
 app.use(errorHandler);

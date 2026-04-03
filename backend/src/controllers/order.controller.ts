@@ -305,6 +305,9 @@ export const getOrderByStripeSession = async (req: AuthRequest, res: Response) =
 
     const order = await Order.findById(orderId).lean();
     if (!order) return ApiResponse.error(res, "Order not found", null, 404);
+    if (order.userId.toString() !== req.userId) {
+      return ApiResponse.error(res, "Unauthorized", null, 403);
+    }
 
     return ApiResponse.success(res, "Order retrieved successfully", { order });
 
