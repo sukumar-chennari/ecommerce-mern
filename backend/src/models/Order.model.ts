@@ -66,6 +66,7 @@ export interface IOrder extends Document {
 
   deliveryEstimate?: Date;
 
+  emailSent?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

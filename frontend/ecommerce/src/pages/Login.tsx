@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLoginMutation } from "../features/auth/authApi";
 import { useDispatch } from "react-redux";
 import { setUser } from "../features/auth/authSlice";
@@ -9,6 +9,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import type { RootState } from "../app/store";
 
+import { socket } from "../socket";
 
 const Login = () => {
   const dispatch = useDispatch();
@@ -23,12 +24,19 @@ const Login = () => {
     return <Navigate to={user?.role === "admin" ? "/admin" : "/"} replace />;
   }
 
+  useEffect(() => {
+    if (user?._id) {
+      socket.emit("join", user._id);
+    }
+  }, [user]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
       const res = await login({ email, password }).unwrap();
       dispatch(setUser(res.user));
+
       if (res.user.role === "admin") {
         console.log("admin logged in");
         navigate("/admin");

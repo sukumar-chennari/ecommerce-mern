@@ -1,11 +1,13 @@
 import { useGetMeQuery } from "./features/auth/authApi";
 import AppRoutes from "./routes/AppRoutes";
 import "./index.css";
+import { Toaster } from "react-hot-toast";
+import { useNotificationListener } from "./components/ui/useNotificationListener";
 
 
 function App() {
   const { isLoading } = useGetMeQuery();
-
+  useNotificationListener();
   // ⏳ wait until auth session check is complete
   if (isLoading) {
     return (
@@ -18,6 +20,8 @@ function App() {
   }
 
   return <>
+    <Toaster position="top-right" reverseOrder={false} />
+
     <AppRoutes />
   </>
 }

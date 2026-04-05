@@ -5,7 +5,7 @@ import { markNotificationRead } from "../controllers/notifications.controller";
 
 const router = Router();
 
-router.get("/notifications", requireAuth, getNotifications);
-router.patch("/notifications/:id/read", requireAuth, markNotificationRead);
+router.get("/", requireAuth, getNotifications);
+router.patch("/:id/read", requireAuth, markNotificationRead);
 
 export default router;

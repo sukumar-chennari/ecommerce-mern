@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { socket } from "../../socket";
+
 import {
     useGetNotificationsQuery,
     useMarkAsReadMutation,
@@ -7,12 +9,21 @@ import {
 const NotificationBell = () => {
     const [open, setOpen] = useState(false);
 
-    const { data = [] } = useGetNotificationsQuery();
+    const { data = [], refetch } = useGetNotificationsQuery();
     const [markAsRead] = useMarkAsReadMutation();
 
     console.log('opened this compnent on every cliked', data);
     const unreadCount = data.filter((n) => !n.read).length;
 
+    useEffect(() => {
+        socket.on("new_notification", () => {
+            refetch(); // 🔥 auto refresh
+        });
+
+        return () => {
+            socket.off("new_notification");
+        };
+    }, []);
     return (
         <div className="relative">
             {/* 🔔 Bell */}

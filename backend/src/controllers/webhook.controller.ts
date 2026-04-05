@@ -7,11 +7,10 @@ import { z } from "zod";
 import Order from "../models/Order.model";
 import Product from "../models/Product.model";
 import WebhookEvent from "../models/WebhookEvent.model";
-import { ApiResponse } from "../utils/response.util";
-import { sendEmail } from "../services/email.service";
 import User from "../models/User.model";
 import NotificationModel from "../models/Notification.model";
-
+import { sendEmail } from "../services/email.service";
+import { io } from "../server";
 
 dotenv.config();
 
@@ -21,8 +20,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
 
 export const stripeWebhookHandler = async (req: Request, res: Response) => {
   const sig = req.headers["stripe-signature"] as string | undefined;
-  let userEmail: string | undefined;
-  let emailSent: boolean = false;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET as string;
 
   if (!sig) {
@@ -41,9 +38,9 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
     console.error("Webhook signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
+
   console.log("🔥 WEBHOOK HIT:", event.type);
 
-  // Only process checkout completion
   if (event.type !== "checkout.session.completed") {
     return res.status(200).send();
   }
@@ -55,13 +52,13 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
     typeof session.payment_intent === "string"
       ? session.payment_intent
       : session.payment_intent?.id;
-  console.log("paymentIntentId", paymentIntentId);
 
   if (!paymentIntentId) {
     console.error("Missing payment intent");
     return res.status(200).send();
   }
-  // Prevent duplicate processing
+
+  // Prevent duplicate webhook processing
   const existing = await WebhookEvent.findOne({ eventId }).lean();
   if (existing) {
     console.log("Duplicate webhook event:", eventId);
@@ -77,13 +74,10 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
       raw: event,
       error: "Missing orderId metadata",
     });
-
     return res.status(200).send();
   }
 
-  const orderIdSchema = z.string().regex(/^[0-9a-fA-F]{24}$/);
-  const parsed = orderIdSchema.safeParse(orderId);
-
+  const parsed = z.string().regex(/^[0-9a-fA-F]{24}$/).safeParse(orderId);
   if (!parsed.success) {
     await WebhookEvent.create({
       eventId,
@@ -91,53 +85,36 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
       raw: event,
       error: "Invalid orderId format",
     });
-
     return res.status(200).send();
   }
 
   const mongoSession = await mongoose.startSession();
 
+  let userEmail: string | undefined;
+
   try {
     await mongoSession.withTransaction(async () => {
       const order = await Order.findById(orderId).session(mongoSession);
 
-      if (!order) {
-        throw new Error("Order not found");
-      }
+      if (!order) throw new Error("Order not found");
 
-      if (!session.amount_total) {
-        throw new Error("Missing Stripe amount_total");
-      }
+      if (session.payment_status !== "paid") return;
 
-      if (session.currency !== "inr") {
-        throw new Error("Invalid currency");
-      }
-
-      if (session.payment_status !== "paid") {
+      // Idempotency: already processed
+      if (order.status === "paid") {
+        await WebhookEvent.create(
+          [{ eventId, processedAt: new Date(), raw: event }],
+          { session: mongoSession }
+        );
         return;
       }
 
-      if (session.amount_total !== order.total! * 100) {
+      // Validate amount
+      if (session.amount_total !== order.total * 100) {
         throw new Error("Payment amount mismatch");
       }
 
-      // Idempotency check
-      if (order.status === "paid") {
-        await WebhookEvent.create(
-          [
-            {
-              eventId,
-              processedAt: new Date(),
-              raw: event,
-            },
-          ],
-          { session: mongoSession }
-        );
-
-        return;
-      }
-
-      // Validate stock and decrement
+      // Update stock
       for (const item of order.items) {
         const product = await Product.findById(item.productId).session(
           mongoSession
@@ -148,15 +125,20 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
         }
 
         if (product.stock < item.quantity) {
-          throw new Error(`Insufficient stock for product ${product._id}`);
+          throw new Error(`Insufficient stock`);
         }
 
         product.stock -= item.quantity;
         await product.save({ session: mongoSession });
       }
 
-      // Mark order paid
+      // Update order
       order.status = "paid";
+      order.payment = {
+        method: "stripe",
+        stripePaymentIntentId: paymentIntentId,
+        paidAt: new Date(),
+      };
 
       if (!order.statusTimeline) {
         order.statusTimeline = {};
@@ -164,90 +146,54 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
 
       order.statusTimeline.paidAt = new Date();
 
-      order.payment = {
-        method: "stripe",
-        stripePaymentIntentId: paymentIntentId,
-        paidAt: new Date(),
-        raw: {
-          id: event.id,
-          type: event.type,
-          created: event.created,
-        },
-      };
-
-
       await order.save({ session: mongoSession });
 
       const user = await User.findById(order.userId).session(mongoSession);
       userEmail = user?.email;
 
-
-      try {
-        await sendEmail(
-          user?.email!,
-          "Order Confirmed 🎉",
-          `
-      <h2>Order Confirmed</h2>
-      <p>Order ID: ${order._id}</p>
-      <p>Total: ₹${order.total}</p>
-      <p>Status: ${order.status}</p>
-    `
-        );
-      } catch (err) {
-        console.error("Email failed:", err);
-      }
-
       await WebhookEvent.create(
-        [
-          {
-            eventId,
-            processedAt: new Date(),
-            raw: event,
-          },
-        ],
+        [{ eventId, processedAt: new Date(), raw: event }],
         { session: mongoSession }
       );
     });
 
-    if (userEmail && !emailSent) {
-      try {
-        await sendEmail(
-          userEmail,
-          "Order Confirmed 🎉",
-          `<h2>Order Confirmed</h2>
-     <p>Order ID: ${orderId}</p>
-     <p>Total: ₹${session.amount_total}</p>`
-        )
-        await Order.findByIdAndUpdate(orderId, {
-          emailSent: true,
-        }
-        ).catch(err => console.error("Email failed:", err));
-      } catch (err) {
-        console.error("Email failed:", err);
-      }
+    // ===== AFTER TRANSACTION =====
+
+    const orderDoc = await Order.findById(orderId);
+
+    // ✅ User email (idempotent)
+    if (userEmail && !orderDoc?.emailSent) {
+      sendEmail(
+        userEmail,
+        "Order Confirmed 🎉",
+        `<h2>Order Confirmed</h2>
+         <p>Order ID: ${orderId}</p>
+         <p>Total: ₹${orderDoc?.total}</p>`
+      )
+        .then(() => {
+          return Order.findByIdAndUpdate(orderId, { emailSent: true });
+        })
+        .catch((err) => console.error("User email failed:", err));
     }
 
+    // ✅ Admin emails (non-blocking)
     const admins = await User.find({ role: "admin" }).select("email");
-    await Promise.all(
-      admins.map(async (admin) => {
-        await sendEmail(
-          admin.email,
-          "Order Confirmed 🎉",
-          `<h2>Order Confirmed</h2>
-     <p>Order ID: ${orderId}</p>
-     <p>Total: ₹${session.amount_total}</p>`
-        )
-      })
-    ).catch(err => console.error("Email failed:", err));
 
+    admins.forEach((admin) => {
+      sendEmail(
+        admin.email,
+        "🛒 New Order Paid",
+        `<p>Order ${orderId} paid</p>`
+      ).catch((err) => console.error("Admin email failed:", err));
+    });
+
+    // ✅ Notifications (DB)
     await NotificationModel.create({
       userId: session.metadata?.userId,
       type: "order_paid",
       title: "Payment Successful",
-      message: `Your order ${orderId} has been confirmed`,
+      message: `Order ${orderId} confirmed`,
     });
-
-
 
     for (const admin of admins) {
       await NotificationModel.create({
@@ -257,9 +203,16 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
         message: `Order ${orderId} was paid`,
       });
     }
+
+    // ✅ Realtime (ONLY targeted)
+    io.to(session.metadata?.userId!).emit("new_notification", {
+      title: "Payment Successful",
+      message: `Order ${orderId} confirmed`,
+    });
+
     return res.status(200).send();
   } catch (err: any) {
-    console.error("Webhook transaction failed:", err.message);
+    console.error("Webhook failed:", err.message);
 
     await WebhookEvent.create({
       eventId,
