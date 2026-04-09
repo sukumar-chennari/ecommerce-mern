@@ -157,6 +157,17 @@ export const verifyCheckoutSession = async (req: Request, res: Response) => {
       return ApiResponse.error(res, "Unauthorized access", null, 403);
     }
 
+    // ✅ Emit notification fallback (in case user missed the webhook toast while redirecting)
+    try {
+      const { io } = require("../server");
+      io.to(userId).emit("new_notification", {
+        title: "Order Confirmed! 🎉",
+        message: `Payment successful for Order #${metadata.orderId.toString().slice(-6)}`,
+      });
+    } catch (socketErr) {
+      console.error("Fallback socket emit failed:", socketErr);
+    }
+
     return ApiResponse.success(res, "Payment verified", {
       orderId: metadata.orderId,
       success: true,

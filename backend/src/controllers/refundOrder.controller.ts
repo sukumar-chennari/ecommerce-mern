@@ -100,6 +100,21 @@ export const refundOrder = async (req: Request, res: Response) => {
         } catch (err) {
             console.error("Email failed:", err);
         }
+
+        // ✅ SHIFT: Real-time socket notification
+        try {
+            const { io } = require("../server");
+            if (order.userId) {
+                io.to(order.userId.toString()).emit("new_notification", {
+                    title: "Order Refunded 💸",
+                    message: `A refund for order ${order._id.toString().slice(-6)} has been processed.`,
+                });
+                console.log(`📡 Socket notification sent to user ${order.userId} for refund`);
+            }
+        } catch (socketErr) {
+            console.error("Failed to send socket notification:", socketErr);
+        }
+
         session.endSession();
 
         return ApiResponse.success(res, "Order refunded successfully", {

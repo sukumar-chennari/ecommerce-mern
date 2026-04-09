@@ -8,22 +8,23 @@ import { useNotificationListener } from "./components/ui/useNotificationListener
 function App() {
   const { isLoading } = useGetMeQuery();
   useNotificationListener();
+  console.log("app rendered");
   // ⏳ wait until auth session check is complete
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-textPrimary font-medium animate-pulse">
-          Checking session...
+  return (
+    <>
+      <Toaster position="top-right" reverseOrder={false} />
+
+      {isLoading ? (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="text-textPrimary font-medium animate-pulse">
+            Checking session...
+          </div>
         </div>
-      </div>
-    );
-  }
-
-  return <>
-    <Toaster position="top-right" reverseOrder={false} />
-
-    <AppRoutes />
-  </>
+      ) : (
+        <AppRoutes />
+      )}
+    </>
+  );
 }
 
 export default App;

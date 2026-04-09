@@ -205,6 +205,33 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 
     await order.save();
 
+    // ✅ SHIFT: Real-time notification to the user
+    try {
+      const { io } = require("../server");
+      const statusMessages: Record<string, { title: string; message: string }> = {
+        shipped: {
+          title: "Order Shipped! 🚚",
+          message: `Your order ${orderId.toString().slice(-6)} has been shipped.`,
+        },
+        delivered: {
+          title: "Order Delivered! ✅",
+          message: `Your order ${orderId.toString().slice(-6)} has been delivered. Enjoy!`,
+        },
+        cancelled: {
+          title: "Order Cancelled ❌",
+          message: `Your order ${orderId.toString().slice(-6)} was cancelled.`,
+        },
+      };
+
+      const notification = statusMessages[status];
+      if (notification && order.userId) {
+        io.to(order.userId.toString()).emit("new_notification", notification);
+        console.log(`📡 Socket notification sent to user ${order.userId} for status: ${status}`);
+      }
+    } catch (socketErr) {
+      console.error("Failed to send socket notification:", socketErr);
+    }
+
     return ApiResponse.success(res, "Order status updated", { order });
   } catch (err) {
     console.error("updateOrderStatus error:", err);

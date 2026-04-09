@@ -2,36 +2,49 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import http from "http";
-
 import { Server } from "socket.io";
-
 import mongoose from "mongoose";
-
-
 import app from "./app";
-
 
 const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
 
+// ✅ CORS: allow BOTH localhost AND ngrok origins (as an array, not ||)
+const ALLOWED_ORIGINS = [
+  "http://localhost:5173",
+  process.env.CLIENT_URL,
+].filter(Boolean) as string[];
+
+console.log("🔧 Socket.io allowed origins:", ALLOWED_ORIGINS);
 
 export const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL,
+    origin: ALLOWED_ORIGINS,
     credentials: true,
   },
+  // Allow both transports
+  transports: ["websocket", "polling"],
 });
 
 io.on("connection", (socket) => {
-  socket.on("join", (userId) => {
+  console.log("✅ Socket connected:", socket.id);
+
+  socket.on("join", (userId: string) => {
     socket.join(userId);
+    console.log(`🏠 Socket ${socket.id} joined room: ${userId}`);
+
+    // Re-join room recorded in server logs
   });
 
-  socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+  socket.on("disconnect", (reason) => {
+    console.log("❌ Socket disconnected:", socket.id, "reason:", reason);
+  });
+
+  // Debug: log all incoming events
+  socket.onAny((eventName, ...args) => {
+    console.log(`📡 [server onAny] socket=${socket.id} event="${eventName}"`, args);
   });
 });
-
 
 const start = async () => {
   try {
@@ -55,7 +68,5 @@ const start = async () => {
     process.exit(1);
   }
 };
-
-
 
 start();

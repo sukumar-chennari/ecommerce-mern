@@ -204,11 +204,22 @@ export const stripeWebhookHandler = async (req: Request, res: Response) => {
       });
     }
 
-    // ✅ Realtime (ONLY targeted)
-    io.to(session.metadata?.userId!).emit("new_notification", {
-      title: "Payment Successful",
-      message: `Order ${orderId} confirmed`,
-    });
+    const targetUserId = session.metadata?.userId;
+    console.log("📤 EMIT new_notification to userId:", targetUserId);
+    console.log("📊 Connected sockets:", await io.fetchSockets().then(s => s.length));
+    
+    if (targetUserId) {
+      const roomSockets = await io.in(targetUserId).fetchSockets();
+      console.log(`📊 Sockets in room ${targetUserId}:`, roomSockets.length);
+      
+      io.to(targetUserId).emit("new_notification", {
+        title: "Order Confirmed! 🎉",
+        message: `Payment successful for Order #${orderId.toString().slice(-6)}`,
+      });
+      console.log("✅ Emit sent to room:", targetUserId);
+    } else {
+      console.error("❌ No userId in session metadata, cannot emit!");
+    }
 
     return res.status(200).send();
   } catch (err: any) {
