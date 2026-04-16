@@ -7,6 +7,8 @@ import Order from "../models/Order.model";
 import Stripe from "stripe";
 import Review from "../models/Review.model";
 import { ApiResponse } from "../utils/response.util";
+import type { IOrder } from "../models/Order.model";
+
 
 interface AuthRequest extends Request {
   userId?: string;
@@ -15,12 +17,13 @@ interface AuthRequest extends Request {
 
 
 interface OrderItemInput {
-  productId: mongoose.Types.ObjectId
-  name: string
-  price: number
-  quantity: number
-  image?: string
+  productId: mongoose.Types.ObjectId;
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string;
 }
+
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error("STRIPE_SECRET_KEY is missing in environment variables");
@@ -36,104 +39,129 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-12
  * - Creates order with status "pending"
  * - Clears user's cart
  */
+
+
 export const createOrderFromCart = async (req: AuthRequest, res: Response) => {
+  const session = await mongoose.startSession();
+
+  let createdOrder: IOrder | null = null;
+
   try {
     const userId = req.userId;
-    if (!userId) return ApiResponse.error(res, "Unauthorized", null, 401);
-
-    // Load cart
-    const cart = await Cart.findOne({ userId })
-    if (!cart || cart.items.length === 0) {
-      return ApiResponse.error(res, "Cart is empty", null, 400);
+    if (!userId) {
+      return ApiResponse.error(res, "Unauthorized", null, 401);
     }
 
-    // Validate each product exists and has stock
-    // We'll build orderItems array with snapshots
-    const orderItems: OrderItemInput[] = []
-    const productIds = cart.items.map(i => i.productId);
+    await session.withTransaction(async () => {
+      const cart = await Cart.findOne({ userId }).session(session);
 
-    const products = await Product.find({
-      _id: { $in: productIds }
-    }).select("name price stock images");
-
-    const productMap = new Map(
-      products.map(p => [p._id.toString(), p])
-    );
-    for (const ci of cart.items) {
-
-      const product = productMap.get(ci.productId.toString());
-      if (!product) {
-        return ApiResponse.error(res, `Product ${ci.productId} not found`, null, 404);
-      }
-      if (product.stock < ci.quantity) {
-        return ApiResponse.error(res, `Insufficient stock for product ${product.name}. Available: ${product.stock}, Requested: ${ci.quantity}`, null, 400);
+      if (!cart || cart.items.length === 0) {
+        throw new Error("Cart is empty");
       }
 
-      orderItems.push({
-        productId: product._id,
-        name: product.name,
-        price: product.price,
-        quantity: ci.quantity,
-        image: (product.images && product.images[0]),
+      const orderItems: OrderItemInput[] = [];
+
+      for (const ci of cart.items) {
+        const product = await Product.findById(ci.productId).session(session);
+
+        if (!product) {
+          throw new Error(`Product not found`);
+        }
+
+        if (product.stock < ci.quantity) {
+          throw new Error(`Insufficient stock for ${product.name}`);
+        }
+
+        // 🔥 RESERVE STOCK
+        product.stock -= ci.quantity;
+        await product.save({ session });
+
+        orderItems.push({
+          productId: product._id,
+          name: product.name,
+          price: product.price,
+          quantity: ci.quantity,
+          image: product.images?.[0],
+        });
+      }
+
+      const subtotal = orderItems.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+
+      const shipping = subtotal >= 1000 ? 0 : 50;
+      const tax = Math.round(subtotal * 0.12);
+      const total = subtotal + shipping + tax;
+
+      const shippingAddressSchema = z.object({
+        name: z.string().min(1),
+        addressLine1: z.string().min(1),
+        city: z.string().min(1),
+        state: z.string().min(1),
+        postalCode: z.string().min(1),
+        country: z.string().min(1),
       });
-    }
 
-    // Calculate totals
-    const subtotal = orderItems.reduce(
-      (s, it) => s + it.price * it.quantity,
-      0
-    );
-    // For demo: simple flat shipping rule and tax rate
-    const shipping = subtotal >= 1000 ? 0 : 50; // free shipping over 1000
-    const taxRate = 0.12; // 12% GST-style placeholder
-    const tax = Math.round(subtotal * taxRate);
-    const total = subtotal + shipping + tax;
+      const parsed = shippingAddressSchema.safeParse(
+        req.body.shippingAddress
+      );
 
-    // Validate shipping address if present
-    const shippingAddressSchema = z.object({
-      name: z.string().min(1),
-      addressLine1: z.string().min(1),
-      city: z.string().min(1),
-      state: z.string().min(1),
-      postalCode: z.string().min(1),
-      country: z.string().min(1),
-    })
+      if (!parsed.success) {
+        throw new Error("Invalid shipping address");
+      }
 
-    const parsed = shippingAddressSchema.safeParse(req.body.shippingAddress);
+      const estimate = new Date(
+        Date.now() + 5 * 24 * 60 * 60 * 1000
+      );
 
-    if (!parsed.success) {
-      return ApiResponse.error(res, "Invalid shipping address", parsed.error.flatten(), 400);
-    }
+      // ✅ CREATE ORDER
+      const order = new Order({
+        userId,
+        items: orderItems,
+        subtotal,
+        shipping,
+        tax,
+        total,
+        status: "pending",
+        paymentStatus: "pending",
+        reservationExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
+        shippingAddress: parsed.data,
+        statusTimeline: {
+          orderedAt: new Date(),
+        },
+        deliveryEstimate: estimate,
+      });
 
-    const estimate = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
-    // const shippingAddress = parsed.data || undefined;
-    const shippingAddress = parsed.data
-    // Create order document (status pending)
-    const order = await Order.create({
-      userId: new mongoose.Types.ObjectId(userId),
-      items: orderItems,
-      subtotal,
-      shipping,
-      tax,
-      total,
-      status: "pending",
-      shippingAddress,
-      statusTimeline: {
-        orderedAt: new Date(),
-      },
-      deliveryEstimate: estimate,
+      await order.save({ session });
+
+      createdOrder = order;
+
+      // ✅ CLEAR CART
+      await Cart.findOneAndDelete({ userId }).session(session);
     });
 
-    cart.items = []
-    await cart.save()
+    // ✅ SAFETY CHECK
+    if (!createdOrder) {
+      return ApiResponse.error(res, "Order creation failed");
+    }
 
-    // Clear the cart (we delete the cart document to avoid leftover state)
-    // await Cart.findOneAndDelete({ userId });
+    // 👇 FORCE TYPE NARROWING
+    const orderDoc = createdOrder as IOrder;
 
-    return ApiResponse.success(res, "Order created", { order }, 201);
-  } catch (err) {
+    return ApiResponse.success(
+      res,
+      "Order created",
+      {
+        orderId: orderDoc._id.toString(),
+      },
+      201
+    );
+  } catch (err: any) {
     console.error("createOrderFromCart error:", err);
-    return ApiResponse.error(res, "Server error", err);
+    return ApiResponse.error(res, err.message || "Server error");
+  } finally {
+    session.endSession();
   }
 };
 
@@ -171,6 +199,44 @@ export const getMyOrders = async (req: AuthRequest, res: Response) => {
   }
 };
 
+
+
+export const retryPayment = async (req: Request, res: Response) => {
+  const { orderId } = req.body;
+  const userId = (req as any).userId;
+
+  const order = await Order.findById(orderId);
+
+  if (!order) return ApiResponse.error(res, "Order not found");
+
+  if (order.userId.toString() !== userId) {
+    return ApiResponse.error(res, "Unauthorized", null, 403);
+  }
+
+  if (order.paymentStatus !== "failed") {
+    return ApiResponse.error(res, "Only failed payments can be retried");
+  }
+
+  order.retryCount += 1;
+  order.lastPaymentAttemptAt = new Date();
+
+  await order.save();
+
+  // reuse your existing createCheckoutSession logic
+  // IMPORTANT: DO NOT create new order
+
+  const session = await stripe.checkout.sessions.create({
+    // same config
+    metadata: {
+      orderId: order._id.toString(),
+      userId: userId.toString(),
+    },
+  });
+
+  return ApiResponse.success(res, "Retry session created", {
+    url: session.url,
+  });
+};
 /**
  * Admin: list all orders (paginated + filter by status)
  */

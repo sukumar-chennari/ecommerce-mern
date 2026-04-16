@@ -24,8 +24,19 @@ export const stripeApi = api.injectEndpoints({
             transformResponse: (response: ApiResponse<{ orderId?: string; success: boolean }>) => response.data,
             keepUnusedDataFor: 0,
         }),
+        retryPayment: builder.mutation<
+            { url: string },
+            { orderId: string }
+        >({
+            query: ({ orderId }) => ({
+                url: "/stripe/retry-payment",
+                method: "POST",
+                body: { orderId },
+            }),
+            transformResponse: (response: ApiResponse<{ url: string }>) => response.data,
+        }),
 
     }),
 });
 
-export const { useCreateCheckoutSessionMutation, useVerifyCheckoutSessionQuery } = stripeApi;
+export const { useCreateCheckoutSessionMutation, useVerifyCheckoutSessionQuery, useRetryPaymentMutation } = stripeApi;

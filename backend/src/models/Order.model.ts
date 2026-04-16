@@ -58,6 +58,14 @@ export interface IOrder extends Document {
     updatedAt: Date;
     updatedBy: mongoose.Types.ObjectId;
   }[];
+
+  paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  retryCount: number;
+
+  reservationExpiresAt?: Date;
+
+
+  lastPaymentAttemptAt: Date;
   tracking?: {
     carrier?: string;
     trackingNumber?: string;
@@ -124,6 +132,7 @@ const OrderSchema = new Schema<IOrder>(
       trackingNumber: String,
       trackingUrl: String,
     },
+    reservationExpiresAt: Date,
 
     statusHistory: [
       {
@@ -153,6 +162,18 @@ const OrderSchema = new Schema<IOrder>(
       refundedAt: { type: Date },
     },
     deliveryEstimate: Date,
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "failed", "refunded"],
+      default: "pending",
+    },
+
+    retryCount: {
+      type: Number,
+      default: 0,
+    },
+
+    lastPaymentAttemptAt: Date,
   },
   { timestamps: true }
 );

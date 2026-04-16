@@ -29,13 +29,15 @@ const CheckoutPage = () => {
             alert("Please fill shipping address");
             return;
         }
+        console.log('address', address)
 
         // 1️⃣ Create Order
         const orderRes = await createOrder({
             shippingAddress: address
         }).unwrap();
-        console.log('orderRes', orderRes.order)
-        const orderId = orderRes._id;
+        console.log('orderRes', orderRes)
+
+        const orderId = orderRes.orderId;
 
         // 2️⃣ Create Stripe Session with orderId
         const stripeRes = await createSession({ orderId }).unwrap();

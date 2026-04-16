@@ -5,6 +5,10 @@ import http from "http";
 import { Server } from "socket.io";
 import mongoose from "mongoose";
 import app from "./app";
+import cookie from "cookie";
+import jwt from "jsonwebtoken";
+import { initCronJobs } from "./jobs/cron";
+
 
 const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
@@ -26,26 +30,46 @@ export const io = new Server(server, {
   transports: ["websocket", "polling"],
 });
 
-io.on("connection", (socket) => {
-  console.log("✅ Socket connected:", socket.id);
+io.use((socket, next) => {
+  try {
+    const rawCookies = socket.handshake.headers.cookie;
 
-  socket.on("join", (userId: string) => {
-    socket.join(userId);
-    console.log(`🏠 Socket ${socket.id} joined room: ${userId}`);
+    if (!rawCookies) {
+      return next(new Error("No cookies"));
+    }
 
-    // Re-join room recorded in server logs
-  });
+    const parsed = cookie.parse(rawCookies);
+    const token = parsed.accessToken;
 
-  socket.on("disconnect", (reason) => {
-    console.log("❌ Socket disconnected:", socket.id, "reason:", reason);
-  });
+    if (!token) {
+      return next(new Error("Unauthorized"));
+    }
 
-  // Debug: log all incoming events
-  socket.onAny((eventName, ...args) => {
-    console.log(`📡 [server onAny] socket=${socket.id} event="${eventName}"`, args);
-  });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+
+    socket.data.user = decoded;
+    next();
+  } catch (err) {
+    next(new Error("Unauthorized"));
+  }
 });
 
+io.on("connection", (socket) => {
+  const user = socket.data.user;
+
+  if (!user?.userId) {
+    console.log("❌ No user in socket");
+    return socket.disconnect();
+  }
+
+  socket.join(user.userId);
+
+  console.log("🔐 Secure socket connected:", user.userId);
+
+  socket.on("disconnect", (reason) => {
+    console.log("❌ Socket disconnected:", socket.id, reason);
+  });
+});
 const start = async () => {
   try {
     if (!process.env.MONGO_URI) {
@@ -59,6 +83,8 @@ const start = async () => {
     console.log("Connecting to MongoDB...");
     await mongoose.connect(process.env.MONGO_URI);
     console.log("MongoDB connected");
+
+    initCronJobs();
 
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

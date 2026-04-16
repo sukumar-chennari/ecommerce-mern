@@ -4,13 +4,17 @@ import type { ApiResponse } from "../products/productApi";
 
 export const ordersApi = api.injectEndpoints({
     endpoints: (builder) => ({
-        createOrder: builder.mutation<any, { shippingAddress: any }>({
+        createOrder: builder.mutation<
+            { orderId: string },
+            { shippingAddress: any }
+        >({
             query: ({ shippingAddress }) => ({
                 url: "/orders",
                 method: "POST",
                 body: { shippingAddress },
             }),
-            transformResponse: (response: ApiResponse<{ order: any }>) => response.data.order,
+            transformResponse: (response: ApiResponse<{ orderId: string }>) =>
+                response.data,
             invalidatesTags: ["Cart", "Order"],
         }),
 

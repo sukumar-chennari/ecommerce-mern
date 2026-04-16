@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useGetMyOrdersQuery } from "../features/orders/ordersApi";
+import { useRetryPaymentMutation } from "../features/stripe/stripeApi";
 
 const statusColor = (status: string) => {
     switch (status) {
@@ -18,6 +19,7 @@ const statusColor = (status: string) => {
 
 const MyOrdersPage = () => {
     const { data, isLoading } = useGetMyOrdersQuery({ page: 1 });
+    const [retryPayment, { isLoading: retrying }] = useRetryPaymentMutation();
 
     if (isLoading) return <div className="p-6">Loading orders...</div>;
 
@@ -31,28 +33,57 @@ const MyOrdersPage = () => {
             {data.orders.map((order) => (
                 <div
                     key={order._id}
-                    className="bg-surface shadow-card rounded-xl p-4 flex justify-between items-center"
+                    className="bg-surface shadow-card rounded-xl p-4 space-y-2"
                 >
-                    <div>
-                        <p className="font-medium">
-                            Order #{order._id.slice(-6)}
-                        </p>
-                        <p className="text-sm text-textMuted">
-                            {new Date(order.createdAt).toLocaleDateString()}
-                        </p>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <p className="font-medium">
+                                Order #{order._id.slice(-6)}
+                            </p>
+                            <p className="text-sm text-textMuted">
+                                {new Date(order.createdAt).toLocaleDateString()}
+                            </p>
+                        </div>
+
+                        <div className="text-right">
+                            <p className="font-semibold">₹{order.total}</p>
+                            <p className={`text-sm ${statusColor(order.status)}`}>
+                                {order.status.toUpperCase()}
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="text-right">
-                        <p className="font-semibold">₹{order.total}</p>
-                        <p className={`text-sm ${statusColor(order.status)}`}>
-                            {order.status.toUpperCase()}
-                        </p>
+                    <div className="flex justify-between items-center">
                         <Link
                             to={`/orders/${order._id}`}
                             className="text-primary text-sm underline"
                         >
                             View Details
                         </Link>
+
+                        {/* 🔴 FAILED PAYMENT UI */}
+                        {order.paymentStatus === "failed" && (
+                            <button
+                                disabled={retrying}
+                                onClick={async () => {
+                                    try {
+                                        const res = await retryPayment({
+                                            orderId: order._id,
+                                        }).unwrap();
+
+                                        window.location.href = res.url;
+                                    } catch (err: any) {
+                                        alert(err?.data?.message || "Retry failed");
+                                    }
+                                }}
+                                className="bg-red-600 text-white px-4 py-1 rounded disabled:opacity-50"
+                            >
+                                {retrying ? "Redirecting..." : "Retry Payment"}
+                            </button>
+                        )}
+                        {order.paymentStatus === "failed" && (
+                            <p className="text-red-500 text-sm">Payment Failed</p>
+                        )}
                     </div>
                 </div>
             ))}
