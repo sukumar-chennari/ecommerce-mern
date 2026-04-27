@@ -1,326 +1,257 @@
 import { useParams } from "react-router-dom";
 import { useGetProductBySlugQuery, useGetProductsQuery } from "../features/products/productApi";
 import { useAddToCartMutation } from "../features/cart/cartApi";
-import { useCreateReviewMutation, useGetProductReviewsQuery } from "../features/reviews/reviewApi";
+import { useGetProductReviewsQuery } from "../features/reviews/reviewApi";
 import ProductCard from "../components/products/ProductCard";
-import { useRef, useEffect, useState } from "react";
-import { useToast } from "../context/ToastContext";
+import { useEffect, useState } from "react";
+import { toast } from "react-hot-toast";
+import Button from "../components/ui/Button";
+import Badge from "../components/ui/Badge";
+import Card from "../components/ui/Card";
 
 const ProductDetailsPage = () => {
     const { slug } = useParams<{ slug: string }>();
-    const { showToast } = useToast();
-
-    const { data, isLoading, error } = useGetProductBySlugQuery(slug!);
-
-    const { data: reviewData } = useGetProductReviewsQuery(data?._id!);
-    const [createReview, { isLoading: isCreatingReview }] =
-        useCreateReviewMutation();
-
-    const [addToCart, { isLoading: isAddingToCart }] =
-        useAddToCartMutation();
+    const { data: product, isLoading, error } = useGetProductBySlugQuery(slug!);
+    const { data: reviewData } = useGetProductReviewsQuery(product?._id!);
+    const [addToCart, { isLoading: isAddingToCart }] = useAddToCartMutation();
     const { data: relatedData } = useGetProductsQuery(
-        {
-            category: data?.category || "",
-            limit: 4,
-        },
-        {
-            skip: !data?.category,
-        }
+        { category: product?.category || "", limit: 5 },
+        { skip: !product?.category }
     );
 
-    const relatedProducts =
-        relatedData?.products?.filter(
-            (p) => p._id !== data?._id
-        ) || [];
-
     const [quantity, setQuantity] = useState(1);
-    const [rating, setRating] = useState(5);
-    const [comment, setComment] = useState("");
     const [activeImage, setActiveImage] = useState(0);
-    const buySectionRef = useRef<HTMLDivElement | null>(null);
-    const [showStickyBar, setShowStickyBar] = useState(false);
 
-    useEffect(() => {
-        const handleScroll = () => {
-            if (!buySectionRef.current) return;
+    const relatedProducts = relatedData?.products?.filter((p) => p._id !== product?._id).slice(0, 4) || [];
 
-            const rect = buySectionRef.current.getBoundingClientRect();
+    const handleAddToCart = async () => {
+        try {
+            await addToCart({ productId: product!._id, quantity }).unwrap();
+            toast.success("Added to cart");
+        } catch (err) {
+            toast.error("Failed to add to cart");
+        }
+    };
 
-            // If buy section is above viewport
-            if (rect.bottom < 0) {
-                setShowStickyBar(true);
-            } else {
-                setShowStickyBar(false);
-            }
-        };
+    if (isLoading) return (
+        <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+    );
 
-        window.addEventListener("scroll", handleScroll);
-
-        return () => {
-            window.removeEventListener("scroll", handleScroll);
-        };
-    }, []);
-
-    if (isLoading) return <div className="p-6">Loading product...</div>;
-
-    if (error || !data)
-        return <div className="p-6 text-red-500">Product not found</div>;
-    const totalReviews = data.reviewCount || 0;
-    const breakdown = reviewData?.breakdown || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    if (error || !product) return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+            <h2 className="text-2xl font-bold text-textPrimary">Product Not Found</h2>
+            <p className="text-textMuted mt-2">The product you're looking for doesn't exist or has been removed.</p>
+            <Button variant="outline" className="mt-6" onClick={() => window.history.back()}>Go Back</Button>
+        </div>
+    );
 
     return (
-        <div className="max-w-7xl mx-auto px-6 py-10">
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-
-                {/* LEFT: IMAGE SECTION */}
-                <div className="space-y-4">
-
-                    {/* Main Image */}
-                    <div className="h-96 bg-gray-100 rounded-2xl overflow-hidden">
-                        {data.images?.[activeImage] ? (
+        <div className="space-y-16 pb-20 animate-in fade-in duration-700">
+            {/* Main Product Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 xl:gap-20">
+                {/* Image Gallery */}
+                <div className="lg:col-span-7 space-y-6">
+                    <div className="aspect-[4/3] rounded-[2.5rem] overflow-hidden bg-gray-50 border border-gray-100 shadow-sm relative group">
+                        {product.images?.[activeImage] ? (
                             <img
-                                src={data.images[activeImage]}
-                                alt={data.name}
-                                className="w-full h-full object-cover transition duration-300"
+                                src={product.images[activeImage]}
+                                alt={product.name}
+                                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                             />
                         ) : (
-                            <div className="flex items-center justify-center h-full text-gray-400">
-                                No Image
+                            <div className="flex items-center justify-center h-full text-gray-300">No Image</div>
+                        )}
+                        
+                        {product.stock === 0 && (
+                            <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center">
+                                <Badge variant="danger" className="scale-150">Out of Stock</Badge>
                             </div>
                         )}
                     </div>
 
-                    {/* Thumbnails */}
-                    {data.images && data.images.length > 1 && (
-                        <div className="flex gap-3 overflow-x-auto">
-                            {data.images.map((img, index) => (
+                    {product.images && product.images.length > 1 && (
+                        <div className="flex gap-4 overflow-x-auto pb-2 px-1">
+                            {product.images.map((img, index) => (
                                 <button
                                     key={index}
                                     onClick={() => setActiveImage(index)}
-                                    className={`h-20 w-20 rounded-lg overflow-hidden border-2 ${activeImage === index
-                                        ? "border-primary"
-                                        : "border-transparent"
-                                        }`}
+                                    className={`relative shrink-0 w-24 aspect-square rounded-2xl overflow-hidden border-2 transition-all ${
+                                        activeImage === index ? "border-primary scale-105 shadow-lg" : "border-transparent opacity-60 hover:opacity-100"
+                                    }`}
                                 >
-                                    <img
-                                        src={img}
-                                        alt={`${data.name}-${index}`}
-                                        className="w-full h-full object-cover"
-                                    />
+                                    <img src={img} alt="Product" className="w-full h-full object-cover" />
                                 </button>
                             ))}
                         </div>
                     )}
-
                 </div>
 
-                {/* RIGHT: PRODUCT INFO */}
-                <div className="space-y-6">
-
-                    <h1 className="text-4xl font-bold">{data.name}</h1>
-
-                    {/* Rating Summary */}
-                    <div className="flex items-center gap-3">
-                        <span className="text-yellow-500 text-lg font-semibold">
-                            ⭐ {data.averageRating?.toFixed(1) || "0.0"}
-                        </span>
-                        <span className="text-gray-500">
-                            ({totalReviews} reviews)
-                        </span>
-                    </div>
-
-                    {/* Price */}
-                    <p className="text-3xl font-bold text-primary">
-                        ₹{data.price}
-                    </p>
-
-                    {/* Stock */}
-                    <div>
-                        {data.stock > 0 ? (
-                            <span className="text-green-600 font-medium">
-                                In Stock ({data.stock} available)
-                            </span>
-                        ) : (
-                            <span className="text-red-600 font-medium">
-                                Out of Stock
-                            </span>
-                        )}
-                    </div>
-
-                    {/* Quantity + Add to Cart */}
-                    <div className="flex items-center gap-4">
-
-                        <input
-                            type="number"
-                            min={1}
-                            max={data.stock}
-                            value={quantity}
-                            onChange={(e) => {
-                                const val = Number(e.target.value);
-                                if (val >= 1 && val <= data.stock) {
-                                    setQuantity(val);
-                                }
-                            }}
-                            className="w-24 border rounded px-3 py-2"
-                        />
-
-                        <div ref={buySectionRef}>
-                            <button
-                                disabled={data.stock === 0 || isAddingToCart}
-                                onClick={async () => {
-                                    try {
-                                        await addToCart({
-                                            productId: data._id,
-                                            quantity,
-                                        }).unwrap();
-                                        showToast("Product added to cart", "success");
-                                    } catch (error) {
-                                        showToast("Failed to add product to cart", "error");
-                                    }
-                                }}
-                                className="mt-6 px-6 py-3 bg-primary text-white rounded-xl disabled:opacity-50"
-                            >
-                                {data.stock === 0
-                                    ? "Out of Stock"
-                                    : isAddingToCart
-                                        ? "Adding..."
-                                        : "Add to Cart"}
-                            </button>
+                {/* Product Info */}
+                <div className="lg:col-span-5 flex flex-col pt-4">
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                           <Badge variant="secondary" className="mb-2">{product.category}</Badge>
+                           <h1 className="text-4xl md:text-5xl font-extrabold text-textPrimary leading-tight tracking-tight">
+                               {product.name}
+                           </h1>
+                           <div className="flex items-center gap-4 pt-2">
+                               <div className="flex items-center gap-1 text-yellow-500">
+                                   {"★".repeat(Math.round(product.averageRating || 0))}
+                                   <span className="text-gray-300">{"★".repeat(5 - Math.round(product.averageRating || 0))}</span>
+                               </div>
+                               <span className="text-xs font-bold text-textMuted uppercase tracking-widest">
+                                   {reviewData?.reviews.length || 0} Customer Reviews
+                               </span>
+                           </div>
                         </div>
-                    </div>
 
-                    {/* Description */}
-                    <div className="pt-6 border-t">
-                        <h3 className="font-semibold mb-2">Description</h3>
-                        <p className="text-gray-600 leading-relaxed">
-                            {data.description}
+                        <div className="text-4xl font-extrabold text-primary">
+                            ₹{product.price.toLocaleString()}
+                        </div>
+
+                        <p className="text-textMuted leading-relaxed text-lg">
+                            {product.description}
                         </p>
-                    </div>
 
-                </div>
-            </div>
+                        <div className="h-[1px] bg-gray-100 my-8"></div>
 
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-
-                {/* Left: Average Score */}
-                <div className="flex flex-col items-center justify-center border rounded-2xl p-6">
-                    <div className="text-5xl font-bold text-primary">
-                        {data.averageRating?.toFixed(1) || "0.0"}
-                    </div>
-                    <div className="text-yellow-500 text-lg mt-2">
-                        {"★".repeat(Math.round(data.averageRating || 0))}
-                        {"☆".repeat(5 - Math.round(data.averageRating || 0))}
-                    </div>
-                    <p className="text-gray-500 mt-2">
-                        Based on {totalReviews} reviews
-                    </p>
-                </div>
-
-                {/* Right: Breakdown Bars */}
-                <div className="space-y-3">
-                    {[5, 4, 3, 2, 1].map((star) => {
-                        const count = breakdown[star];
-                        const percentage =
-                            totalReviews > 0
-                                ? (count / totalReviews) * 100
-                                : 0;
-
-                        return (
-                            <div key={star} className="flex items-center gap-3">
-                                <span className="w-8 text-sm">{star}★</span>
-
-                                <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-yellow-500"
-                                        style={{ width: `${percentage}%` }}
-                                    />
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-6">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-textMuted uppercase tracking-widest ml-1">Quantity</label>
+                                    <div className="flex items-center bg-gray-50 border border-gray-100 rounded-2xl p-1 shadow-sm">
+                                        <button 
+                                            onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                                            className="w-10 h-10 flex items-center justify-center text-textPrimary hover:text-primary transition-colors font-bold"
+                                        >
+                                            −
+                                        </button>
+                                        <span className="w-12 text-center text-sm font-bold text-textPrimary">{quantity}</span>
+                                        <button 
+                                            onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}
+                                            className="w-10 h-10 flex items-center justify-center text-textPrimary hover:text-primary transition-colors font-bold"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
                                 </div>
-
-                                <span className="w-10 text-sm text-gray-500">
-                                    {count}
-                                </span>
+                                <div className="flex-1 space-y-1 pt-5 text-right">
+                                    {product.stock > 0 ? (
+                                        <span className="text-xs font-bold text-accent uppercase tracking-widest">In Stock ({product.stock} units)</span>
+                                    ) : (
+                                        <span className="text-xs font-bold text-danger uppercase tracking-widest">Unavailable</span>
+                                    )}
+                                </div>
                             </div>
-                        );
-                    })}
-                </div>
 
-            </div>
-            {/* Reviews Section */}
-            <div className="mt-16">
-                <h2 className="text-2xl font-bold mb-6">
-                    Customer Reviews
-                </h2>
-
-                {reviewData?.reviews.length === 0 && (
-                    <p className="text-gray-500">No reviews yet</p>
-                )}
-
-                {reviewData?.reviews.map((review) => (
-                    <div key={review._id} className="border-b py-6 space-y-2">
-                        <div className="flex items-center gap-3">
-                            <span className="font-medium">
-                                {review.userId.name}
-                            </span>
-                            <span className="text-yellow-500">
-                                ⭐ {review.rating}
-                            </span>
+                            <Button 
+                                className="w-full py-5 text-base shadow-2xl" 
+                                disabled={product.stock === 0 || isAddingToCart}
+                                onClick={handleAddToCart}
+                                isLoading={isAddingToCart}
+                            >
+                                {product.stock === 0 ? "Out of Stock" : "Add to Shopping Cart"}
+                            </Button>
                         </div>
-                        <p className="text-gray-700">{review.comment}</p>
+
+                        <div className="grid grid-cols-2 gap-4 mt-10">
+                            <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-textMuted uppercase tracking-tighter">Shipping</p>
+                                    <p className="text-xs font-bold text-textPrimary">Free Worldwide</p>
+                                </div>
+                            </div>
+                            <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-textMuted uppercase tracking-tighter">Security</p>
+                                    <p className="text-xs font-bold text-textPrimary">2 Year Warranty</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                ))}
+                </div>
             </div>
 
             {/* Related Products */}
-            <div className="mt-16">
-                <h2 className="text-2xl font-bold mb-6">
-                    You May Also Like
-                </h2>
-
-                {relatedProducts.length === 0 ? (
-                    <p className="text-gray-500">
-                        No related products found.
-                    </p>
-                ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                        {relatedProducts.map((product) => (
-                            <ProductCard
-                                key={product._id}
-                                product={product}
-                            />
+            {relatedProducts.length > 0 && (
+                <section className="space-y-10 pt-16 border-t border-gray-100">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-3xl font-extrabold text-textPrimary tracking-tight">You May Also Like</h2>
+                        <Button variant="ghost" size="sm">View Collection →</Button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                        {relatedProducts.map((p) => (
+                            <ProductCard key={p._id} product={p} />
                         ))}
                     </div>
-                )}
-            </div>
+                </section>
+            )}
 
-            {/* Sticky Add to Cart Bar (Mobile) */}
-            {showStickyBar && data.stock > 0 && (
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4 flex items-center justify-between md:hidden z-50">
+            {/* Reviews Section */}
+            <section className="space-y-10 pt-16 border-t border-gray-100">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <h2 className="text-3xl font-extrabold text-textPrimary tracking-tight">Customer Experience</h2>
+                    <div className="flex items-center gap-4 bg-gray-50 px-6 py-3 rounded-2xl border border-gray-100 shadow-sm">
+                        <div className="flex items-center gap-1 text-yellow-500 text-xl font-extrabold">
+                            <span>{product.averageRating?.toFixed(1) || "0.0"}</span>
+                            <span className="text-lg">★</span>
+                        </div>
+                        <div className="h-6 w-[1px] bg-gray-200"></div>
+                        <span className="text-xs font-bold text-textMuted uppercase tracking-widest">{reviewData?.reviews.length || 0} Total Reviews</span>
+                    </div>
+                </div>
 
-                    <div>
-                        <p className="font-semibold text-sm truncate max-w-[150px]">
-                            {data.name}
-                        </p>
-                        <p className="text-primary font-bold">
-                            ₹{data.price}
-                        </p>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                    <div className="lg:col-span-2 space-y-8">
+                        {reviewData?.reviews.length === 0 ? (
+                            <div className="bg-gray-50/50 rounded-3xl p-16 text-center border border-dashed border-gray-200">
+                                <p className="text-textMuted font-medium">Be the first to share your thoughts on this product.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {reviewData?.reviews.map((review) => (
+                                    <Card key={review._id} className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs uppercase">
+                                                    {review.userId.name.charAt(0)}
+                                                </div>
+                                                <span className="text-sm font-bold text-textPrimary">{review.userId.name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1 text-yellow-500 text-xs">
+                                                {"★".repeat(review.rating)}
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-textMuted leading-relaxed italic line-clamp-3">"{review.comment}"</p>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
-                    <button
-                        onClick={async () => {
-                            await addToCart({
-                                productId: data._id,
-                                quantity,
-                            }).unwrap();
-                        }}
-                        className="bg-primary text-white px-6 py-2 rounded-lg"
-                    >
-                        Add to Cart
-                    </button>
-
+                    <div className="space-y-6">
+                        <Card className="bg-primary/5 border-primary/10">
+                            <h3 className="font-bold text-primary mb-4">Quality Guarantee</h3>
+                            <p className="text-xs text-textPrimary leading-relaxed mb-6">
+                                We stand by the quality of our products. If you are not completely satisfied, we offer a 30-day money back guarantee.
+                            </p>
+                            <Button variant="primary" className="w-full shadow-lg shadow-primary/20">Write a Review</Button>
+                        </Card>
+                    </div>
                 </div>
-            )}
+            </section>
         </div>
     );
 };

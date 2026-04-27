@@ -3,284 +3,172 @@ import {
     useDeleteProductMutation,
 } from "../../../features/admin/adminProductApi";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useState, useEffect } from "react";
+import AdminTable from "../components/AdminTable";
+import AdminBadge from "../components/AdminBadge";
+import { toast } from "react-hot-toast";
 
 const AdminProductsPage = () => {
     const [searchTerm, setSearchTerm] = useState("");
-    const [search, setSearch] = useState("")
-    const [stockFilter, setStockFilter] = useState("")
-    const [categoryFilter, setCategoryFilter] = useState("")
-    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
-    const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
-
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [page, setPage] = useState(1);
+    const navigate = useNavigate();
 
-    const { data, isLoading, isError } = useGetAdminProductsQuery({
-        search: debouncedSearchTerm,
-        stock: stockFilter,
-        category: categoryFilter,
+    const { data, isLoading } = useGetAdminProductsQuery({
+        search: debouncedSearch,
         page,
         limit: 10,
     });
     const [deleteProduct, { isLoading: isDeleting }] = useDeleteProductMutation();
 
-
-    const toggleSelect = (productId: string) => {
-        console.log(productId);
-        setSelectedProducts((prev: any) =>
-            prev.includes(productId)
-                ? prev.filter((id: any) => id !== productId)
-                : [...prev, productId]
-        );
-        console.log('selected products', selectedProducts);
-    };
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchTerm(e.target.value);
-    }
-    // debounced search effect
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearchTerm(searchTerm);
-        }, 500);
+        const timer = setTimeout(() => setDebouncedSearch(searchTerm), 500);
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    const filteredProducts = useMemo(() => {
-        if (!debouncedSearchTerm) return data?.products || [];
-
-        return data?.products?.filter((product: any) =>
-            product.name
-                .toLowerCase()
-                .includes(debouncedSearchTerm.toLowerCase())
-        ) || [];
-    }, [data?.products, debouncedSearchTerm]);
-
-
-
-
-    const navigate = useNavigate();
-
-    const handleDelete = async (productId: string) => {
-        const confirmDelete = window.confirm(
-            "Are you sure you want to delete this product?"
-        );
-
-        if (!confirmDelete) return;
-
+    const handleDelete = async (id: string) => {
+        if (!window.confirm("Are you sure you want to delete this product?")) return;
         try {
-            await deleteProduct(productId).unwrap();
+            await deleteProduct(id).unwrap();
+            toast.success("Product deleted successfully");
         } catch (err) {
-            alert("Failed to delete product");
+            toast.error("Failed to delete product");
         }
-    };
-    const handleBulkDelete = async () => {
-        if (!window.confirm("Delete selected products?")) return;
-
-        await Promise.all(
-            selectedProducts.map((id) => deleteProduct(id))
-        );
-
-        setSelectedProducts([]);
     };
 
     if (isLoading) {
-        return <p className="text-gray-500">Loading products...</p>;
+        return (
+            <div className="flex items-center justify-center h-96">
+                <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
     }
-
-    if (isError) {
-        return <p className="text-red-500">Failed to load products</p>;
-    }
-
-
-
-
 
     return (
-        <div>
-            {/* HEADER */}
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">Products</h1>
-
-                {/* serach bar  */}
-                <div className="flex items-center gap-2">
-                    <input type="text" placeholder="Search products" className="border rounded-lg px-4 py-2" onChange={(e) => handleInputChange(e)} />
-                    {/* <button className="bg-primary text-white px-4 py-2 rounded-lg hover:opacity-90">Search</button> */}
+        <div className="space-y-8 animate-in fade-in duration-500">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-textPrimary tracking-tight">Product Catalog</h1>
+                    <p className="text-sm text-textMuted mt-1">Manage inventory, prices, and product information.</p>
                 </div>
-
-                {selectedProducts.length > 2 && (
-                    <div className="bg-gray-100 p-3 mb-4 rounded flex justify-between">
-                        <span>{selectedProducts.length} selected</span>
-
-                        <button
-                            onClick={handleBulkDelete}
-                            className="text-red-600"
-                        >
-                            Delete Selected
-                        </button>
-                    </div>
-                )}
+                
                 <button
                     onClick={() => navigate("/admin/products/create")}
-                    className="bg-primary text-white px-4 py-2 rounded-lg hover:opacity-90"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white text-xs font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-all"
                 >
-                    + Add Product
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add New Product
                 </button>
             </div>
 
-
-            <div className="flex gap-4 mb-6">
-
-                <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search products..."
-                    className="border px-3 py-2 rounded"
-                />
-
-                <select
-                    value={stockFilter}
-                    onChange={(e) => setStockFilter(e.target.value)}
-                    className="border px-3 py-2 rounded"
-                >
-                    <option value="">All Stock</option>
-                    <option value="in">In Stock</option>
-                    <option value="low">Low Stock</option>
-                    <option value="out">Out of Stock</option>
+            <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1 relative">
+                    <svg className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input 
+                        type="text" 
+                        placeholder="Search products by name or SKU..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all shadow-sm"
+                    />
+                </div>
+                <select className="bg-white border border-gray-200 text-xs font-bold rounded-xl px-4 py-3 outline-none shadow-sm cursor-pointer hover:border-primary/50 transition-colors min-w-[150px]">
+                    <option>All Categories</option>
+                    <option>Electronics</option>
+                    <option>Fashion</option>
+                    <option>Home</option>
                 </select>
-
-                <select
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="border px-3 py-2 rounded"
-                >
-                    <option value="">All Categories</option>
-                    <option value="Clothing">Clothing</option>
-                    <option value="Electronics">Electronics</option>
-                </select>
-
             </div>
-            {/* EMPTY STATE */}
-            {filteredProducts?.length === 0 ? (
-                <p className="text-gray-500">No products found</p>
-            ) : (
-                <div className="overflow-x-auto">
-                    <table className="w-full border rounded-xl overflow-hidden">
-                        <thead className="bg-gray-100">
-                            <tr>
-                                <th className="p-3">
-                                    <input
-                                        type="checkbox"
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
-                                                setSelectedProducts(filteredProducts.map((p: any) => p._id));
-                                            } else {
-                                                setSelectedProducts([]);
-                                            }
-                                        }}
-                                    />
-                                </th>
-                                <th className="text-left p-3">Image</th>
-                                <th className="text-left p-3">Name</th>
-                                <th className="p-3">Price</th>
-                                <th className="p-3">Stock</th>
-                                <th className="p-3">Status</th>
-                                <th className="p-3">Actions</th>
-                            </tr>
-                        </thead>
 
-                        <tbody>
-                            {filteredProducts.map((product: any) => {
-                                const isOutOfStock = product.stock === 0;
+            <AdminTable headers={["Product", "Category", "Price", "Stock", "Status", "Actions"]}>
+                {data?.products?.map((product: any) => (
+                    <tr key={product._id} className="hover:bg-gray-50/50 transition-colors group">
+                        <td className="px-6 py-5">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 overflow-hidden flex items-center justify-center shrink-0">
+                                    {product.images?.[0] ? (
+                                        <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                    )}
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-sm font-bold text-textPrimary truncate">{product.name}</span>
+                                    <span className="text-[10px] text-textMuted uppercase font-bold tracking-tighter">ID: {product._id.slice(-6).toUpperCase()}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td className="px-6 py-5 text-sm text-textMuted font-medium">
+                            {product.category || 'Uncategorized'}
+                        </td>
+                        <td className="px-6 py-5">
+                            <span className="text-sm font-bold text-textPrimary">₹{product.price.toLocaleString()}</span>
+                        </td>
+                        <td className="px-6 py-5">
+                            <span className={`text-sm font-bold ${product.stock < 10 ? 'text-danger' : 'text-textPrimary'}`}>
+                                {product.stock} units
+                            </span>
+                        </td>
+                        <td className="px-6 py-5">
+                            {product.stock > 0 ? (
+                                <AdminBadge type="success">In Stock</AdminBadge>
+                            ) : (
+                                <AdminBadge type="danger">Out of Stock</AdminBadge>
+                            )}
+                        </td>
+                        <td className="px-6 py-5">
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => navigate(`/admin/products/update/${product._id}`)}
+                                    className="p-2 text-textMuted hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
+                                    title="Edit Product"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(product._id)}
+                                    className="p-2 text-textMuted hover:text-danger hover:bg-danger/5 rounded-lg transition-all"
+                                    title="Delete Product"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                ))}
+            </AdminTable>
 
-                                return (
-                                    <tr key={product._id} className="border-t">
-                                        <td className="p-3">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedProducts.includes(product._id)}
-                                                onChange={() => toggleSelect(product._id)}
-                                            />
-                                        </td>
-                                        {/* IMAGE */}
-                                        <td className="p-3">
-                                            <img
-                                                src={product.images?.[0]}
-                                                alt={product.name}
-                                                className="w-12 h-12 object-cover rounded"
-                                            />
-                                        </td>
-
-                                        {/* NAME */}
-                                        <td className="p-3 font-medium">{product.name}</td>
-
-                                        {/* PRICE */}
-                                        <td className="p-3 text-center">₹{product.price}</td>
-
-                                        {/* STOCK */}
-                                        <td className="p-3 text-center">{product.stock}</td>
-
-                                        {/* STATUS */}
-                                        <td className="p-3 text-center">
-                                            {isOutOfStock ? (
-                                                <span className="text-red-500 text-sm font-medium">
-                                                    Out of Stock
-                                                </span>
-                                            ) : product.stock <= 5 ? (
-                                                <span className="text-orange-500 text-sm font-medium">
-                                                    Low Stock
-                                                </span>
-                                            ) : (
-                                                <span className="text-green-600 text-sm font-medium">
-                                                    In Stock
-                                                </span>
-                                            )}
-                                        </td>
-
-                                        {/* ACTIONS */}
-                                        <td className="p-3 text-center space-x-3">
-                                            <button
-                                                onClick={() =>
-                                                    navigate(`/admin/products/update/${product._id}`)
-                                                }
-                                                className="text-blue-600 hover:underline"
-                                            >
-                                                Edit
-                                            </button>
-
-                                            <button
-                                                disabled={isDeleting}
-                                                onClick={() => handleDelete(product._id)}
-                                                className="text-red-600 hover:underline disabled:opacity-50"
-                                            >
-                                                Delete
-                                            </button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+            {data?.totalPages > 1 && (
+                <div className="flex justify-center gap-2 pt-4">
+                    <button 
+                        disabled={page === 1}
+                        onClick={() => setPage(p => p - 1)}
+                        className="px-4 py-2 text-xs font-bold text-textPrimary bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all disabled:opacity-30"
+                    >
+                        Previous
+                    </button>
+                    <div className="flex items-center px-4 text-xs font-bold text-textMuted">
+                        Page {page} of {data.totalPages}
+                    </div>
+                    <button 
+                        disabled={page === data.totalPages}
+                        onClick={() => setPage(p => p + 1)}
+                        className="px-4 py-2 text-xs font-bold text-textPrimary bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all disabled:opacity-30"
+                    >
+                        Next
+                    </button>
                 </div>
             )}
-
-            {/* pagination  */}
-            <div className="flex justify-center mt-6">
-                <button
-                    disabled={page === 1}
-                    onClick={() => setPage(page - 1)}
-                    className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-                >
-                    Previous
-                </button>
-                <span className="px-4 py-2">Page {page}</span>
-                <button
-                    disabled={page === data?.totalPages}
-                    onClick={() => setPage(page + 1)}
-                    className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
-                >
-                    Next
-                </button>
-            </div>
         </div>
     );
 };

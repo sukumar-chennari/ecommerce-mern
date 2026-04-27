@@ -13,108 +13,118 @@ const AdminLayout = () => {
         navigate("/login");
     };
 
-    return (
-        <div className="min-h-screen flex bg-background">
+    const navItems = [
+        { 
+            to: "/admin", 
+            label: "Dashboard", 
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+            )
+        },
+        { 
+            to: "/admin/orders", 
+            label: "Orders", 
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+            )
+        },
+        { 
+            to: "/admin/products", 
+            label: "Products", 
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+            )
+        }
+    ];
 
+    return (
+        <div className="min-h-screen flex bg-[#F8FAFC]">
             {/* Sidebar */}
-            <aside className="w-64 bg-secondary text-white p-6 flex flex-col shadow-xl">
-                <div className="mb-8">
-                    <h2 className="text-2xl font-extrabold tracking-tight">Admin Portal</h2>
-                    <p className="text-xs text-white/50 uppercase font-semibold mt-1">Management Suite</p>
+            <aside className="w-72 bg-secondary text-white flex flex-col fixed inset-y-0 shadow-2xl z-20">
+                <div className="p-8">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+                            <span className="text-xl font-bold text-white">A</span>
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold tracking-tight">AdminPanel</h2>
+                            <p className="text-[10px] text-white/40 uppercase font-bold tracking-widest">Store Management</p>
+                        </div>
+                    </div>
                 </div>
 
-                <nav className="space-y-2 flex-1">
-                    <NavLink
-                        to="/admin"
-                        end
-                        className={({ isActive }) =>
-                            `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
-                                ? "bg-accent text-black font-bold shadow-lg shadow-accent/20 translate-x-1"
-                                : "hover:bg-white/5 text-white/70 hover:text-white"
-                            }`
-                        }
-                    >
-                        <span>Dashboard</span>
-                    </NavLink>
-
-                    <NavLink
-                        to="/admin/orders"
-                        className={({ isActive }) =>
-                            `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
-                                ? "bg-accent text-black font-bold shadow-lg shadow-accent/20 translate-x-1"
-                                : "hover:bg-white/5 text-white/70 hover:text-white"
-                            }`
-                        }
-                    >
-                        <span>Orders</span>
-                    </NavLink>
-
-                    <NavLink
-                        to="/admin/products"
-                        className={({ isActive }) =>
-                            `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
-                                ? "bg-accent text-black font-bold shadow-lg shadow-accent/20 translate-x-1"
-                                : "hover:bg-white/5 text-white/70 hover:text-white"
-                            }`
-                        }
-                    >
-                        <span>Products</span>
-                    </NavLink>
-
-                    <NavLink
-                        to="/admin/analytics"
-                        className={({ isActive }) =>
-                            `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
-                                ? "bg-accent text-black font-bold shadow-lg shadow-accent/20 translate-x-1"
-                                : "hover:bg-white/5 text-white/70 hover:text-white"
-                            }`
-                        }
-                    >
-                        <span>Analytics</span>
-                    </NavLink>
+                <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto">
+                    {navItems.map((item) => (
+                        <NavLink
+                            key={item.to}
+                            to={item.to}
+                            end={item.to === "/admin"}
+                            className={({ isActive }) =>
+                                `flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 group ${isActive
+                                    ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02] translate-x-1"
+                                    : "text-white/50 hover:text-white hover:bg-white/5"
+                                }`
+                            }
+                        >
+                            <span className="transition-transform duration-300 group-hover:scale-110">
+                                {item.icon}
+                            </span>
+                            <span className="font-semibold text-sm tracking-wide">{item.label}</span>
+                        </NavLink>
+                    ))}
                 </nav>
 
-                <div className="pt-6 border-t border-white/10 mt-auto">
+                <div className="p-6 border-t border-white/5">
                     <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-danger hover:bg-danger/10 transition-colors font-semibold"
+                        className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-danger hover:bg-danger/10 transition-all duration-300 font-bold group"
                     >
-                        <span>Logout</span>
+                        <svg className="w-5 h-5 transition-transform duration-300 group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        <span className="text-sm">Log Out</span>
                     </button>
                 </div>
             </aside>
 
-            {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                {/* Header */}
-                <header className="h-20 bg-surface border-b border-divider flex items-center justify-between px-10 shrink-0 shadow-sm bg-white">
-                    <div>
-                        <h1 className="text-xl font-bold text-textPrimary">
-                            Welcome back, <span className="text-primary">{user?.name}</span>
-                        </h1>
-                        <p className="text-xs text-textMuted uppercase font-medium tracking-wider mt-0.5">Administrator Access</p>
+            {/* Main Content */}
+            <div className="flex-1 ml-72 flex flex-col min-h-screen">
+                <header className="h-20 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b border-gray-100 flex items-center justify-between px-10">
+                    <div className="flex items-center gap-4">
+                        <div className="p-2 bg-gray-50 rounded-lg lg:hidden">
+                            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" />
+                            </svg>
+                        </div>
+                        <h2 className="text-sm font-bold text-textPrimary uppercase tracking-widest">Overview</h2>
                     </div>
 
-                    <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-3 px-4 py-2 bg-secondary/5 rounded-full border border-secondary/10">
-                            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm shadow-sm">
-                                {user?.name?.charAt(0).toUpperCase() || "U"}
-                            </div>
-                            <span className="text-sm font-semibold text-textPrimary">{user?.name}</span>
+                    <div className="flex items-center gap-4">
+                        <div className="flex flex-col items-end mr-2">
+                            <span className="text-sm font-bold text-textPrimary">{user?.name}</span>
+                            <span className="text-[10px] text-accent font-bold uppercase tracking-tighter">System Admin</span>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-gray-100 border-2 border-white shadow-sm flex items-center justify-center text-primary font-bold overflow-hidden">
+                            {user?.name?.charAt(0).toUpperCase() || "A"}
                         </div>
                     </div>
                 </header>
 
-                {/* Content */}
-                <main className="flex-1 overflow-auto p-10 bg-gray-50/30">
+                <main className="p-10 flex-1">
                     <div className="max-w-6xl mx-auto">
                         <Outlet />
                     </div>
                 </main>
             </div>
-
         </div>
     );
 };
+
 
 export default AdminLayout;

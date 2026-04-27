@@ -1,4 +1,4 @@
-# 🎨 Ecommerce Frontend - Premium Storefront
+# 🎨 Ecommerce Frontend - Premium  ReliCart
 
 A modern, responsive, and high-performance React application built for a premium shopping experience.
 
