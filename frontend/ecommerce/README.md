@@ -1,6 +1,10 @@
-# 🎨 Ecommerce Frontend - Premium  ReliCart
+## 🚀 ReliCart
 
-A modern, responsive, and high-performance React application built for a premium shopping experience.
+ReliCart is a reliability-first ecommerce system designed to handle real-world challenges like:
+- Duplicate Stripe webhooks (idempotency)
+- Concurrent checkouts (stock reservation)
+- Payment failures and retries
+- Data consistency using MongoDB transactions
 
 ## ✨ Highlights
 - **Performance Optimized**: Built with Vite and RTK Query for lightning-fast loads.
