@@ -5,7 +5,7 @@ import { io, Socket } from "socket.io-client";
 // because the browser connects directly to the backend via WebSocket.
 // If you're testing from a device that can't reach localhost:5000,
 // swap this to your ngrok URL.
-const SOCKET_URL = "http://localhost:5000";
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 
 export const socket: Socket = io(SOCKET_URL, {
     withCredentials: true,
