@@ -113,7 +113,7 @@ export const getProductReviews = async (req: Request, res: Response) => {
       .lean();
 
     const stats = await Review.aggregate([
-      { $match: { productId: new mongoose.Types.ObjectId(productId) } },
+      { $match: { productId: new mongoose.Types.ObjectId(productId as string) } },
       {
         $group: {
           _id: "$rating",

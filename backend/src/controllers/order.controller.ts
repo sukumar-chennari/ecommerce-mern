@@ -29,7 +29,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error("STRIPE_SECRET_KEY is missing in environment variables");
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-12-15.clover" });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2026-02-25.clover" });
 
 /**
  * Create an order from the current user's cart.
@@ -364,7 +364,7 @@ export const getOrderByStripeSession = async (req: AuthRequest, res: Response) =
     const { sessionId } = req.params;
     if (!sessionId) return ApiResponse.error(res, "Missing sessionId", null, 400);
 
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const session = await stripe.checkout.sessions.retrieve(sessionId as string);
     const orderId = session.metadata?.orderId;
 
     if (!orderId) return ApiResponse.error(res, "Order not found in session metadata", null, 400);

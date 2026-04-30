@@ -173,7 +173,7 @@ export const removeCartItem = async (req: AuthRequest, res: Response) => {
     const cart = await Cart.findOne({ userId });
     if (!cart) return ApiResponse.error(res, "Cart not found", null, 404);
 
-    cart.items = cart.items.filter((i) => !i.productId.equals(productId));
+    cart.items = cart.items.filter((i) => !i.productId.equals(productId as string));
     await cart.save();
     return ApiResponse.success(res, "Item removed", { cart });
   } catch (err) {
