@@ -81,7 +81,10 @@ const start = async () => {
     }
 
     console.log("Connecting to MongoDB...");
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect(process.env.MONGO_URI!).catch(err => {
+      console.error("Mongo connection failed:", err.message);
+      process.exit(1);
+    });
     console.log("MongoDB connected");
 
     initCronJobs();
